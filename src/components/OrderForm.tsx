@@ -113,7 +113,7 @@ function OptionPicker({
             return (
               <label
                 key={choice.id}
-                className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+                className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
                   checked ? 'border-gold-400 bg-gold-400 text-night-950' : 'border-white/15 bg-white/5 hover:bg-white/10'
                 }`}
               >
@@ -168,8 +168,8 @@ function CoursePicker({
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-holly-500 to-holly-600 font-display text-lg text-white shadow-lg shadow-holly-600/30">
           {index}
         </span>
-        <span className="font-display text-2xl">{course.title}</span>
-        {course.skippable && <span className="ml-auto text-xs font-semibold text-white/50">optional</span>}
+        <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">{course.title}</span>
+        {course.skippable && <span className="shrink-0 text-xs font-semibold text-white/50">optional</span>}
       </legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {course.dishes.map((dish) => (
@@ -184,7 +184,7 @@ function CoursePicker({
       </div>
       {course.skippable && (
         <label
-          className={`mt-3 inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed px-3.5 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+          className={`mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-dashed px-4 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
             value === SKIP ? 'border-gold-400 bg-gold-400/15 text-gold-300' : 'border-white/20 text-white/60 hover:border-white/40 hover:text-white'
           }`}
         >
@@ -383,7 +383,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
       onSubmit={submit}
       noValidate
       aria-busy={busy}
-      className={`glass relative space-y-8 p-5 sm:p-8 ${editing ? 'ring-2 ring-gold-400/70' : ''}`}
+      className={`glass card-pad relative space-y-8 ${editing ? 'ring-2 ring-gold-400/70' : ''}`}
       aria-label={editing ? `Edit ${editing.name}'s order` : 'Place your order'}
     >
       <AnimatePresence>
@@ -397,7 +397,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
             <p className="font-semibold text-gold-300">Editing {editing.name}&apos;s order</p>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white"
+              className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white"
               onClick={onCancelEdit}
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -412,7 +412,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-500 to-pine-700 shadow-lg shadow-pine-700/30">
             <UserRound className="h-5 w-5" aria-hidden="true" />
           </span>
-          <span className="font-display text-2xl">Who&apos;s hungry?</span>
+          <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">Who&apos;s hungry?</span>
         </label>
         <input
           id={`${idPrefix}-name`}
@@ -450,8 +450,8 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-500 text-night-950 shadow-lg shadow-gold-500/30">
             <TriangleAlert className="h-5 w-5" aria-hidden="true" />
           </span>
-          <span className="font-display text-2xl">Allergies or requests</span>
-          <span className="ml-auto text-xs font-semibold text-white/50">optional</span>
+          <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">Allergies or requests</span>
+          <span className="shrink-0 text-xs font-semibold text-white/50">optional</span>
         </label>
         <input
           id={`${idPrefix}-notes`}
@@ -475,7 +475,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
       </div>
 
       <button type="submit" className="btn-primary w-full py-4 text-lg" disabled={busy}>
-        <span className="candy-stripes absolute inset-0 opacity-30" />
+        <span className="candy-sheen opacity-30" aria-hidden="true" />
         <span className="relative inline-flex items-center gap-2">
           {busy ? <Spinner /> : editing ? <Save className="h-5 w-5" aria-hidden="true" /> : <Send className="h-5 w-5" aria-hidden="true" />}
           {busy ? 'Wrapping it up…' : editing ? 'Save changes' : 'Send my order to Santa'}

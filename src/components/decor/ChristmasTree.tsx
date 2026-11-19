@@ -58,25 +58,24 @@ export function ChristmasTree({ className, tone = 'bright', lights = true, star 
             opacity="0.8"
           />
           {LIGHTS.map((l, i) => (
-            <circle
-              key={i}
-              cx={l.x}
-              cy={l.y}
-              r="3"
-              fill={l.c}
-              className="animate-twinkle"
-              style={{
-                animationDelay: `${delay + i * 0.27}s`,
-                transformBox: 'fill-box',
-                transformOrigin: 'center',
-                filter: `drop-shadow(0 0 3px ${l.c})`,
-              }}
-            />
+            <g key={i}>
+              {/* soft halo instead of a (costly) drop-shadow filter */}
+              <circle cx={l.x} cy={l.y} r="5.5" fill={l.c} opacity="0.25" />
+              <circle
+                cx={l.x}
+                cy={l.y}
+                r="3"
+                fill={l.c}
+                className="animate-twinkle"
+                style={{ animationDelay: `${delay + i * 0.27}s`, transformBox: 'fill-box', transformOrigin: 'center' }}
+              />
+            </g>
           ))}
         </>
       )}
       {star && (
         <g className="animate-star" style={{ transformBox: 'fill-box', transformOrigin: 'center', animationDelay: `${delay}s` }}>
+          <circle cx="50" cy="12" r="11" fill="#fde047" opacity="0.22" />
           <path d="M50 1 l3.5 7.2 7.9 1.1-5.7 5.6 1.4 7.8L50 19l-7.1 3.7 1.4-7.8-5.7-5.6 7.9-1.1z" fill="#fde047" />
         </g>
       )}

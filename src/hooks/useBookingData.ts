@@ -24,6 +24,7 @@ export function useBookingData(onUnauthenticated: () => void) {
   const unauthRef = useRef(onUnauthenticated);
   unauthRef.current = onUnauthenticated;
   const inFlight = useRef(false);
+  const lastJson = useRef('');
 
   const reload = useCallback(async () => {
     if (inFlight.current) return;
@@ -31,7 +32,12 @@ export function useBookingData(onUnauthenticated: () => void) {
     setRefreshing(true);
     try {
       const next = await api.state();
-      setState(next);
+      // Skip the re-render when a background refresh brings back identical data.
+      const json = JSON.stringify(next);
+      if (json !== lastJson.current) {
+        lastJson.current = json;
+        setState(next);
+      }
       setError(null);
       setRefreshFailed(false);
     } catch (err) {

@@ -2,6 +2,7 @@ import { Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Spinner } from './Spinner';
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -26,11 +27,12 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onCancel]);
 
-  return (
+  // Portalled to <body> so it sits above everything (incl. toasts), whatever stacking context it was opened from.
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -41,7 +43,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
             aria-modal="true"
             aria-labelledby="confirm-title"
             aria-describedby="confirm-body"
-            className="glass w-full max-w-sm p-6 text-center"
+            className="w-full max-w-sm rounded-3xl border border-white/10 bg-night-900 p-6 text-center shadow-2xl shadow-black/60 sm:p-7"
             initial={{ y: 60, scale: 0.9, rotate: -2 }}
             animate={{ y: 0, scale: 1, rotate: 0 }}
             exit={{ y: 40, scale: 0.95, opacity: 0 }}
@@ -69,6 +71,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

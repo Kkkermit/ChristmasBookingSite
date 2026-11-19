@@ -129,7 +129,7 @@ export function DietaryBadges({ dietary, className = '' }: { dietary: readonly D
         <span
           key={d}
           title={DIETARY_LABEL[d]}
-          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[0.62rem] font-bold uppercase tracking-wide ${
+          className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[0.7rem] font-bold uppercase tracking-wide ${
             d === 'vegan' ? 'bg-pine-500/20 text-pine-500' : 'bg-gold-400/15 text-gold-300'
           }`}
         >

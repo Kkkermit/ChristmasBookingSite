@@ -3,39 +3,43 @@ import { motion } from 'motion/react';
 import { PRICE_PER_HEAD, RESTAURANT, formatPrice } from '../../shared/menu';
 import type { Order, PublicConfig } from '../../shared/types';
 import { formatLongDate, sleepsUntilChristmas } from '../lib/format';
+import { useNow } from '../hooks/useNow';
 import { BaubleGarland } from './BaubleGarland';
 import { Countdown } from './Countdown';
 
 const WORDS = ['Christmas', 'Feast'];
 
-export function Hero({ config, orders, now }: { config: PublicConfig; orders: Order[]; now: Date }) {
+export function Hero({ config, orders }: { config: PublicConfig; orders: Order[] }) {
+  // Minute resolution is plenty for "sleeps till Christmas"; only the countdown ticks every second.
+  const now = useNow(60_000);
   const count = orders.length;
   const complete = count >= config.partySize;
   const sleeps = sleepsUntilChristmas(now);
   const remaining = Math.max(0, config.partySize - count);
 
   return (
-    <section id="top" className="relative pt-12 text-center sm:pt-16">
+    <section id="top" className="relative pt-10 text-center sm:pt-14">
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="inline-flex flex-wrap items-center justify-center gap-2"
+        className="flex flex-wrap items-center justify-center gap-2"
       >
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-300/40 bg-gold-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-gold-300">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-300/40 bg-gold-300/10 px-3 py-1.5 text-[0.7rem] font-bold uppercase leading-none tracking-[0.12em] sm:text-xs sm:tracking-[0.15em] text-gold-300">
           <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-          {RESTAURANT.name}, {RESTAURANT.location}
+          {RESTAURANT.name}
+          <span className="hidden min-[360px]:inline">, {RESTAURANT.location}</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-white/80">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.7rem] font-bold uppercase leading-none tracking-[0.12em] sm:text-xs sm:tracking-[0.15em] text-white/80">
           <PoundSterling className="h-3.5 w-3.5" aria-hidden="true" />
           {formatPrice(PRICE_PER_HEAD)} pp + 10% service
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-white/80">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.7rem] font-bold uppercase leading-none tracking-[0.12em] sm:text-xs sm:tracking-[0.15em] text-white/80">
           <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
           {sleeps === 0 ? "It's Christmas!" : `${sleeps} sleep${sleeps === 1 ? '' : 's'} till Christmas`}
         </span>
       </motion.div>
 
-      <h1 className="mt-5 font-display text-5xl leading-[0.95] sm:text-7xl lg:text-8xl">
+      <h1 className="mt-6 font-display text-[2.75rem] leading-[1.1] min-[360px]:text-5xl sm:text-7xl lg:text-8xl">
         {WORDS.map((word, i) => (
           <motion.span
             key={word}
@@ -48,7 +52,7 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
           </motion.span>
         ))}
         <motion.span
-          className="mt-1 block text-3xl text-gold-300 sm:text-5xl"
+          className="mt-2 block text-3xl leading-none text-gold-300 sm:mt-3 sm:text-5xl"
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 10, delay: 0.45 }}
@@ -58,7 +62,7 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
       </h1>
 
       <motion.p
-        className="mx-auto mt-5 max-w-xl text-base text-white/75 sm:text-lg"
+        className="mx-auto mt-6 max-w-xl text-base text-white/75 sm:text-lg"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
@@ -67,17 +71,17 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
       </motion.p>
 
       <motion.div
-        className="glass mx-auto mt-8 grid max-w-4xl gap-6 p-5 sm:p-7 md:grid-cols-[auto_1fr] md:items-center md:gap-10"
+        className="glass card-pad mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-7 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-10"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5, type: 'spring', stiffness: 120, damping: 18 }}
       >
-        <div>
+        <div className="flex flex-col items-center">
           <p className="mb-3 text-sm font-bold uppercase tracking-widest text-gold-300">
             {config.ordersOpen ? 'Orders close in' : 'Orders are closed'}
           </p>
           {config.ordersOpen ? (
-            <Countdown deadline={new Date(config.deadline)} now={now} />
+            <Countdown deadline={config.deadline} />
           ) : (
             <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-gold-300">
               <Lock className="h-8 w-8" aria-hidden="true" />
@@ -87,8 +91,8 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
         </div>
 
         <div className="min-w-0">
-          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <p className="text-left text-lg font-bold">
+          <div className="mb-3 flex flex-col items-center gap-1 lg:flex-row lg:items-baseline lg:justify-between lg:gap-3">
+            <p className="text-lg font-bold">
               <span className="font-display text-3xl text-gold-300">{count}</span>
               <span className="text-white/70"> / {config.partySize} elves have ordered</span>
             </p>

@@ -18,9 +18,9 @@ function LoginPage() {
     <MotionConfig reducedMotion="user">
       <ToastProvider>
         <div className="relative min-h-dvh overflow-x-clip">
-          <Backdrop />
+          <Backdrop moon />
           <Snowfall />
-          <OfflineBanner />
+          <OfflineBanner position="top-4" />
           <ErrorBoundary>
             {/* Load the real app once the session cookie is set. */}
             <LoginScreen onSuccess={() => setTimeout(() => window.location.replace('/'), 450)} />

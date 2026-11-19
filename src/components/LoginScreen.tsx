@@ -36,13 +36,13 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
 
   return (
     <motion.main
-      className="relative z-10 flex min-h-dvh items-center justify-center px-4 pb-48 pt-16 sm:pb-64"
+      className="relative z-10 flex min-h-dvh flex-col items-center px-4 pb-48 pt-28 sm:pb-64"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
       transition={{ duration: 0.5 }}
     >
-      <motion.div animate={card} className="w-full max-w-md">
+      <motion.div animate={card} className="my-auto w-full max-w-md">
         <motion.div
           initial={{ y: 40, opacity: 0, rotate: -3 }}
           animate={{ y: 0, opacity: 1, rotate: 0 }}
@@ -55,7 +55,13 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.35 }}
             >
-              <ChristmasTree className="h-40 w-36 drop-shadow-[0_10px_30px_rgba(34,197,94,0.35)]" />
+              <div className="relative">
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-24 rounded-full bg-[radial-gradient(closest-side,rgba(34,197,94,0.35),transparent)]"
+                />
+                <ChristmasTree className="relative h-40 w-36" />
+              </div>
             </motion.div>
           </div>
 
@@ -89,7 +95,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
               <button
                 type="button"
                 onClick={() => setShow((s) => !s)}
-                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
                 aria-label={show ? 'Hide password' : 'Show password'}
               >
                 {show ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
@@ -107,7 +113,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
               </motion.p>
             )}
             <button type="submit" className="btn-primary w-full text-lg" disabled={!password || busy}>
-              <span className="candy-stripes absolute inset-0 opacity-40" />
+              <span className="candy-sheen opacity-40" aria-hidden="true" />
               <span className="relative inline-flex items-center gap-2">
                 {busy ? <Spinner /> : <LockOpen className="h-5 w-5" aria-hidden="true" />}
                 {busy ? 'Checking the list…' : 'Unlock the grotto'}

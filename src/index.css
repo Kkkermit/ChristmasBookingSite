@@ -57,16 +57,16 @@
     to { background-position: 40px 0; }
   }
   @keyframes star {
-    0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 4px #fde047); }
-    50% { transform: scale(1.18) rotate(8deg); filter: drop-shadow(0 0 14px #fde047); }
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.15) rotate(8deg); }
   }
   @keyframes wave {
     0%, 100% { transform: rotate(-10deg); }
     50% { transform: rotate(28deg); }
   }
   @keyframes bulb {
-    0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 12px currentColor); }
-    50% { opacity: 0.4; filter: none; }
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
   }
   @keyframes drift {
     0% { transform: translate3d(-6%, -4%, 0) scale(1); }
@@ -79,7 +79,8 @@
     color-scheme: dark;
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
-    scroll-padding-top: 6rem;
+    /* sticky header (incl. fairy lights) + breathing room */
+    scroll-padding-top: 6.5rem;
   }
   body {
     @apply bg-night-950 font-sans text-snow antialiased;
@@ -95,11 +96,12 @@
   }
 }
 
+/* Frosted glass on desktop; a cheaper solid panel on phones (backdrop blur is costly on mobile GPUs). */
 @utility glass {
-  @apply rounded-3xl border border-white/10 bg-night-900/60 shadow-2xl shadow-black/40 backdrop-blur-xl;
+  @apply rounded-3xl border border-white/10 bg-night-900/90 shadow-xl shadow-black/30 md:bg-night-900/60 md:backdrop-blur-xl;
 }
 @utility field {
-  @apply w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base text-snow outline-none transition placeholder:text-white/35 focus:border-gold-400 focus:bg-white/10 focus:ring-4 focus:ring-gold-400/20;
+  @apply w-full min-w-0 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-base text-snow outline-none transition placeholder:text-white/35 focus:border-gold-400 focus:bg-white/10 focus:ring-4 focus:ring-gold-400/20;
 }
 @utility field-error {
   @apply border-holly-400 focus:border-holly-400 focus:ring-holly-400/25;
@@ -117,7 +119,11 @@
   @apply btn border border-white/15 bg-white/5 text-snow hover:border-white/30 hover:bg-white/10;
 }
 @utility section-title {
-  @apply font-display text-3xl leading-tight tracking-wide sm:text-4xl;
+  @apply font-display text-[1.75rem] leading-tight tracking-wide sm:text-4xl;
+}
+/* One padding scale for every top-level card. */
+@utility card-pad {
+  @apply p-5 sm:p-7;
 }
 @utility text-candy {
   background: linear-gradient(100deg, #fde68a 0%, #fb7185 18%, #ffffff 32%, #4ade80 48%, #fde68a 64%, #fb7185 82%, #fde68a 100%);
@@ -135,6 +141,18 @@
 @keyframes skeleton {
   from { background-position: 150% 0; }
   to { background-position: -50% 0; }
+}
+/* Moving candy-cane stripes for buttons - animated with transform (no repaints). Parent needs overflow-hidden. */
+@utility candy-sheen {
+  position: absolute;
+  inset: 0 0 0 -30px;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.22) 0 10px, transparent 10px 20px);
+  animation: candy-slide 1.2s linear infinite;
+}
+@keyframes candy-slide {
+  from { transform: translateX(0); }
+  to { transform: translateX(28.284px); }
 }
 @utility candy-stripes {
   background-image: repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.22) 0 10px, transparent 10px 20px);

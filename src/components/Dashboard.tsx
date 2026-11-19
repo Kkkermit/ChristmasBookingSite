@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import type { Order } from '../../shared/types';
 import { useBookingData } from '../hooks/useBookingData';
-import { useNow } from '../hooks/useNow';
 import { ApiError, api } from '../lib/api';
 import { bigCelebration, celebrate } from '../lib/celebrate';
 import { forgetMyOrder, myOrderIds, rememberMyOrder } from '../lib/mine';
@@ -12,6 +11,7 @@ import { Header } from './Header';
 import { Hero } from './Hero';
 import { NiceList } from './NiceList';
 import { OrderForm } from './OrderForm';
+import { SectionHeading } from './SectionHeading';
 import { DashboardSkeleton, ErrorState } from './states';
 import { Tally } from './Tally';
 import { useToast } from './Toasts';
@@ -26,7 +26,7 @@ function HowItWorks({ partySize }: { partySize: number }) {
     { Icon: ListChecks, text: `Once all ${partySize} are in, download the filled booking form` },
   ];
   return (
-    <div className="glass p-6">
+    <div className="glass card-pad">
       <h2 className="font-display text-2xl">How it works</h2>
       <ol className="mt-4 space-y-3">
         {steps.map((step, i) => (
@@ -56,9 +56,8 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [mine, setMine] = useState(() => myOrderIds());
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLElement>(null);
   const toast = useToast();
-  const now = useNow(1000);
 
   const logout = useCallback(async () => {
     setLoggingOut(true);
@@ -132,16 +131,15 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
         {!state && !error && <DashboardSkeleton />}
         {state && (
           <>
-            <Hero config={state.config} orders={state.orders} now={now} />
+            <Hero config={state.config} orders={state.orders} />
 
-            <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
-              <div id="order" ref={formRef} className="scroll-mt-24">
-                <h2 className="section-title mb-4 flex items-center gap-3">
-                  {editing ? 'Change of heart?' : 'Place your order'}
-                  <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
-                    <UtensilsCrossed className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                </h2>
+            <section id="order" ref={formRef} aria-labelledby="order-title" className="mt-16 sm:mt-20">
+              <SectionHeading
+                id="order-title"
+                icon={UtensilsCrossed}
+                title={editing ? 'Change of heart?' : 'Place your order'}
+              />
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
                 <OrderForm
                   config={state.config}
                   orders={state.orders}
@@ -149,13 +147,13 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
                   onSaved={handleSaved}
                   onCancelEdit={() => setEditing(null)}
                 />
+                <aside className="hidden lg:sticky lg:top-28 lg:block">
+                  {state.orders.length === 0 ? <HowItWorks partySize={state.config.partySize} /> : <Tally orders={state.orders} />}
+                </aside>
               </div>
-              <aside className="hidden space-y-6 lg:sticky lg:top-24 lg:block lg:pt-14">
-                {state.orders.length === 0 ? <HowItWorks partySize={state.config.partySize} /> : <Tally orders={state.orders} />}
-              </aside>
-            </div>
+            </section>
 
-            <div id="nice-list" className="mt-16 scroll-mt-24">
+            <div id="nice-list" className="mt-16 sm:mt-20">
               <NiceList
                 orders={state.orders}
                 mine={mine}
@@ -168,12 +166,14 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
                 refreshFailed={refreshFailed}
                 onRefresh={() => void reload()}
               />
-              <div className="mt-6 lg:hidden">
-                <Tally orders={state.orders} />
-              </div>
+              {state.orders.length > 0 && (
+                <div className="mt-6 lg:hidden">
+                  <Tally orders={state.orders} />
+                </div>
+              )}
             </div>
 
-            <div className="mt-16">
+            <div className="mt-16 sm:mt-20">
               <Workshop config={state.config} orders={state.orders} details={state.details} onDetailsSaved={setDetails} />
             </div>
           </>

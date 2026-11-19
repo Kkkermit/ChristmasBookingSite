@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react';
+import { memo } from 'react';
+import { useNow } from '../hooks/useNow';
 import { timeLeft } from '../lib/format';
 
-function Tile({ value, label }: { value: number; label: string }) {
+const Tile = memo(function Tile({ value, label }: { value: number; label: string }) {
   const text = String(value).padStart(2, '0');
   return (
     <div className="flex flex-col items-center">
@@ -20,13 +22,15 @@ function Tile({ value, label }: { value: number; label: string }) {
           </motion.span>
         </AnimatePresence>
       </div>
-      <span className="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-widest text-white/60 sm:text-xs">{label}</span>
+      <span className="mt-1.5 text-[0.7rem] font-semibold uppercase tracking-widest text-white/60 sm:text-xs">{label}</span>
     </div>
   );
-}
+});
 
-export function Countdown({ deadline, now }: { deadline: Date; now: Date }) {
-  const left = timeLeft(deadline, now);
+/** Owns its own one-second clock, so only these four tiles re-render each tick. */
+export function Countdown({ deadline }: { deadline: string }) {
+  const now = useNow(1000);
+  const left = timeLeft(new Date(deadline), now);
   return (
     <div className="flex items-start justify-center gap-2 sm:gap-3" role="timer" aria-label={`${left.days} days, ${left.hours} hours and ${left.minutes} minutes left to order`}>
       <Tile value={left.days} label="Days" />

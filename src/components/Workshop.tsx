@@ -7,6 +7,7 @@ import { DETAIL_FIELDS, LIMITS, validateDetails } from '../../shared/validation'
 import { ApiError, BOOKING_FORM_PREVIEW_URL, BOOKING_FORM_URL, api, downloadFile } from '../lib/api';
 import { bigCelebration } from '../lib/celebrate';
 import { Spinner } from './icons';
+import { SectionHeading } from './SectionHeading';
 import { useToast } from './Toasts';
 
 /** A tiny paper booking form that fills in as people order. */
@@ -77,7 +78,7 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
   }
 
   return (
-    <form onSubmit={submit} noValidate aria-busy={busy} className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={submit} noValidate aria-busy={busy} className="grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2">
       {DETAIL_FIELDS.map((field) => (
         <div key={field.key}>
           <label htmlFor={`${idPrefix}-${field.key}`} className="mb-1 block text-xs font-bold uppercase tracking-wider text-white/60">
@@ -86,7 +87,7 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
           <input
             id={`${idPrefix}-${field.key}`}
             type={field.type ?? 'text'}
-            className={`field py-2.5 text-sm ${errors[field.key] ? 'field-error' : ''}`}
+            className={`field py-2.5 text-base ${errors[field.key] ? 'field-error' : ''}`}
             placeholder={field.placeholder}
             maxLength={LIMITS.detail}
             value={values[field.key]}
@@ -143,20 +144,17 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
   }
 
   return (
-    <section id="workshop" aria-labelledby="workshop-title" className="scroll-mt-24">
-      <div className="mb-5 text-center">
-        <h2 id="workshop-title" className="section-title inline-flex items-center gap-3">
-          Santa&apos;s Workshop
-          <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
-            <Wrench className="h-6 w-6" aria-hidden="true" />
-          </span>
-        </h2>
-        <p className="mt-1 text-white/65">Everyone can grab the menu and generate the finished booking form.</p>
-      </div>
+    <section id="workshop" aria-labelledby="workshop-title">
+      <SectionHeading
+        id="workshop-title"
+        icon={Wrench}
+        title="Santa’s Workshop"
+        subtitle="Everyone can grab the menu and generate the finished booking form."
+      />
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr]">
-        <div className="grid gap-5">
-          <motion.div whileHover={{ y: -4 }} className="glass p-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] lg:gap-8">
+        <div className="grid grid-cols-1 content-start gap-6">
+          <motion.div whileHover={{ y: -4 }} className="glass card-pad">
             <div className="flex items-center gap-4">
               <span className="flex h-14 w-14 shrink-0 animate-sway items-center justify-center rounded-2xl bg-holly-500/20 text-holly-400">
                 <BookOpen className="h-7 w-7" aria-hidden="true" />
@@ -168,12 +166,12 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
                 </p>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <a href={MENU_PDF_PATH} download={MENU_PDF_FILENAME} className="btn-ghost">
+            <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+              <a href={MENU_PDF_PATH} download={MENU_PDF_FILENAME} className="btn-ghost" aria-label="Download menu">
                 <Download className="h-5 w-5" aria-hidden="true" />
-                Download menu
+                Download
               </a>
-              <a href={MENU_PDF_PATH} target="_blank" rel="noopener" className="btn-ghost">
+              <a href={MENU_PDF_PATH} target="_blank" rel="noopener" className="btn-ghost" aria-label="View menu">
                 <Eye className="h-5 w-5" aria-hidden="true" />
                 View
               </a>
@@ -181,11 +179,11 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
           </motion.div>
 
           <motion.div
-            className={`glass relative overflow-hidden p-6 ${complete ? 'ring-2 ring-gold-400' : ''}`}
+            className={`glass card-pad relative overflow-hidden ${complete ? 'ring-2 ring-gold-400' : ''}`}
             animate={complete ? { boxShadow: ['0 0 0 #fcd34d00', '0 0 60px #fcd34d55', '0 0 0 #fcd34d00'] } : {}}
             transition={{ duration: 2.4, repeat: Infinity }}
           >
-            <div className="grid items-center gap-6 sm:grid-cols-[auto_1fr] lg:grid-cols-1 xl:grid-cols-[auto_1fr]">
+            <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-1">
               <PaperForm orders={orders} rows={Math.max(config.partySize, Math.min(orders.length, config.maxGuests))} />
               <div>
                 <h3 className="flex items-center gap-2 font-display text-2xl">
@@ -199,7 +197,7 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
                       ? 'Nobody has ordered yet - the form will be blank until the first order comes in.'
                       : `Builds the restaurant’s PDF with everyone’s choices ticked. ${missing} still to order - you can generate it any time, it just won’t be complete yet.`}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-5 grid gap-2 sm:flex sm:flex-wrap">
                   <button
                     type="button"
                     onClick={downloadForm}
@@ -207,13 +205,13 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
                     aria-busy={downloading}
                     className={complete ? 'btn-gold' : 'btn-primary'}
                   >
-                    {!complete && <span className="candy-stripes absolute inset-0 opacity-30" />}
-                    <span className="relative inline-flex items-center gap-2 whitespace-nowrap">
+                    {!complete && <span className="candy-sheen opacity-30" aria-hidden="true" />}
+                    <span className="relative inline-flex items-center gap-2">
                       {downloading ? <Spinner /> : <Download className="h-5 w-5" aria-hidden="true" />}
                       {downloading ? 'Elves writing…' : 'Download booking form'}
                     </span>
                   </button>
-                  <a href={BOOKING_FORM_PREVIEW_URL} target="_blank" rel="noopener" className="btn-ghost">
+                  <a href={BOOKING_FORM_PREVIEW_URL} target="_blank" rel="noopener" className="btn-ghost" aria-label="Preview booking form">
                     <Eye className="h-5 w-5" aria-hidden="true" />
                     Preview
                   </a>
@@ -227,7 +225,7 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
           </motion.div>
         </div>
 
-        <div className="glass p-6">
+        <div className="glass card-pad">
           <h3 className="flex items-center gap-2 font-display text-2xl">
             <NotebookPen className="h-6 w-6 text-gold-300" aria-hidden="true" />
             Booking details

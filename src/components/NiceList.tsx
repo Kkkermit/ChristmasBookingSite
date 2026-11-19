@@ -4,6 +4,7 @@ import { COURSES, SKIP, choiceLabel, findDish, optionField } from '../../shared/
 import type { Order } from '../../shared/types';
 import { colourFor, initials } from '../lib/format';
 import { DishIcon } from './icons';
+import { SectionHeading } from './SectionHeading';
 import { EmptyState } from './states';
 
 interface NiceListProps {
@@ -52,7 +53,7 @@ function OrderCard({
       }}
       exit={{ opacity: 0, x: 80, rotate: 8, scale: 0.8, transition: { duration: 0.3 } }}
       transition={{ type: 'spring', stiffness: 220, damping: 20, boxShadow: { duration: 1.6 } }}
-      className={`relative flex flex-col overflow-hidden rounded-3xl border bg-night-800/70 p-4 backdrop-blur-md ${
+      className={`relative flex flex-col overflow-hidden rounded-3xl border bg-night-800/90 p-4 sm:p-5 ${
         isEditing ? 'border-gold-400' : 'border-white/10'
       }`}
     >
@@ -70,7 +71,7 @@ function OrderCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-lg font-bold">{order.name}</h3>
+            <h3 className="min-w-0 break-words text-lg font-bold leading-tight">{order.name}</h3>
             {isMine && (
               <span className="rounded-full bg-gold-400 px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-wide text-night-950">
                 You
@@ -110,14 +111,14 @@ function OrderCard({
       </div>
       {canEdit && (
         <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
-          <button type="button" onClick={onEdit} className="btn-ghost min-h-10 py-2 text-sm" aria-label={`Edit ${order.name}'s order`}>
+          <button type="button" onClick={onEdit} className="btn-ghost min-h-11 py-2 text-sm" aria-label={`Edit ${order.name}'s order`}>
             <Pencil className="h-4 w-4" aria-hidden="true" />
             Edit
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="btn min-h-10 border border-holly-400/30 bg-holly-500/10 py-2 text-sm text-holly-400 hover:bg-holly-500/20"
+            className="btn min-h-11 border border-holly-400/30 bg-holly-500/10 py-2 text-sm text-holly-400 hover:bg-holly-500/20"
             aria-label={`Delete ${order.name}'s order`}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -143,29 +144,28 @@ export function NiceList({
 }: NiceListProps) {
   return (
     <section aria-labelledby="nice-list-title">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <h2 id="nice-list-title" className="section-title flex items-center gap-3">
-          The Nice List
-          <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
-            <ScrollText className="h-6 w-6" aria-hidden="true" />
-          </span>
-        </h2>
-        <div className="flex items-center gap-3 pb-1">
-          <span className="text-sm font-semibold text-white/60">{orders.length} ordered</span>
-          {onRefresh && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
-              aria-label="Refresh the list"
-              title="Refresh"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
-            </button>
-          )}
-        </div>
-      </div>
+      <SectionHeading
+        id="nice-list-title"
+        icon={ScrollText}
+        title="The Nice List"
+        aside={
+          <>
+            <span className="hidden text-sm font-semibold text-white/60 min-[400px]:inline">{orders.length} ordered</span>
+            {onRefresh && (
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={refreshing}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+                aria-label="Refresh the list"
+                title="Refresh"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+              </button>
+            )}
+          </>
+        }
+      />
       <AnimatePresence>
         {refreshFailed && (
           <motion.p
@@ -183,7 +183,7 @@ export function NiceList({
       {orders.length === 0 ? (
         <EmptyState title="No orders yet">Be the first elf to order - your bauble will light up at the top!</EmptyState>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence initial={false}>
             {orders.map((order, i) => (
               <OrderCard

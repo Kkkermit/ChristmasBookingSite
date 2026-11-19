@@ -13,7 +13,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
 /** Placeholder layout shown while the orders load - mirrors the real dashboard. */
 export function DashboardSkeleton() {
   return (
-    <div role="status" aria-label="Loading the orders" className="pt-12 sm:pt-16">
+    <div role="status" aria-label="Loading the orders" className="pt-10 sm:pt-14">
       <div className="flex flex-col items-center gap-4">
         <div className="flex gap-2">
           <Skeleton className="h-7 w-40 rounded-full" />
@@ -23,24 +23,24 @@ export function DashboardSkeleton() {
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-5 w-[min(30rem,80%)]" />
       </div>
-      <div className="glass mx-auto mt-8 grid max-w-4xl gap-6 p-5 sm:p-7 md:grid-cols-[auto_1fr]">
-        <div className="flex justify-center gap-2">
+      <div className="glass card-pad mx-auto mt-8 grid max-w-4xl gap-7 lg:grid-cols-[auto_1fr]">
+        <div className="flex justify-center gap-2 sm:gap-3">
           {Array.from({ length: 4 }, (_, i) => (
             <Skeleton key={i} className="h-14 w-14 sm:h-20 sm:w-20" />
           ))}
         </div>
         <div className="space-y-4">
           <Skeleton className="h-7 w-56" />
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-6 justify-items-center gap-y-3 sm:grid-cols-12">
             {Array.from({ length: 12 }, (_, i) => (
-              <Skeleton key={i} className="h-9 w-9 rounded-full sm:h-11 sm:w-11" />
+              <Skeleton key={i} className="h-8 w-8 rounded-full sm:h-9 sm:w-9 lg:h-8 lg:w-8" />
             ))}
           </div>
           <Skeleton className="h-3 w-full rounded-full" />
         </div>
       </div>
-      <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <div className="glass space-y-5 p-5 sm:p-8">
+      <div className="mt-16 grid gap-6 sm:mt-20 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:gap-8">
+        <div className="glass card-pad space-y-5">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-12 w-full" />
           <div className="grid gap-3 sm:grid-cols-2">
@@ -49,7 +49,7 @@ export function DashboardSkeleton() {
             ))}
           </div>
         </div>
-        <div className="glass hidden space-y-3 p-6 lg:block">
+        <div className="glass card-pad hidden space-y-3 lg:block">
           <Skeleton className="h-8 w-40" />
           {Array.from({ length: 6 }, (_, i) => (
             <Skeleton key={i} className="h-7 w-full" />
@@ -83,7 +83,7 @@ export function StatePanel({ icon: Icon, title, children, tone = 'neutral', acti
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`glass flex flex-col items-center p-8 text-center ${className}`}
+      className={`glass flex flex-col items-center px-5 py-8 text-center sm:px-8 sm:py-10 ${className}`}
       role={tone === 'error' ? 'alert' : undefined}
     >
       <span className={`flex h-16 w-16 animate-float items-center justify-center rounded-3xl bg-gradient-to-br ${TONE[tone]}`}>
@@ -161,20 +161,23 @@ export function useOnline(): boolean {
   return online;
 }
 
-export function OfflineBanner() {
+/** Shown just below the sticky header (or near the top on the login page) - never on top of it. */
+export function OfflineBanner({ position = 'top-[5.75rem] sm:top-[6.25rem]' }: { position?: string }) {
   const online = useOnline();
   return (
     <AnimatePresence>
       {!online && (
         <motion.div
           role="status"
-          initial={{ y: -40, opacity: 0 }}
+          initial={{ y: -16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -40, opacity: 0 }}
-          className="fixed inset-x-0 top-0 z-[95] flex items-center justify-center gap-2 bg-gold-500 px-4 py-2 text-sm font-semibold text-night-950 shadow-lg"
+          exit={{ y: -16, opacity: 0 }}
+          className={`pointer-events-none fixed inset-x-0 z-[60] flex justify-center px-4 ${position}`}
         >
-          <WifiOff className="h-4 w-4" aria-hidden="true" />
-          You&apos;re offline - changes won&apos;t save until you reconnect.
+          <span className="flex items-center gap-2 rounded-full bg-gold-500 px-4 py-2 text-sm font-semibold text-night-950 shadow-lg shadow-black/40">
+            <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+            You&apos;re offline - changes won&apos;t save until you reconnect.
+          </span>
         </motion.div>
       )}
     </AnimatePresence>

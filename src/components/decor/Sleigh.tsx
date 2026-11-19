@@ -69,7 +69,7 @@ export function Sleigh({ everyMs = 26000 }: { everyMs?: number }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 9, ease: 'linear' }}
           >
-            <SleighSilhouette className="h-10 w-36 drop-shadow-[0_0_10px_rgba(253,224,71,0.7)] sm:h-14 sm:w-48" />
+            <SleighSilhouette className="h-10 w-36 sm:h-14 sm:w-48" />
             <span className="ml-1 flex gap-1.5">
               {Array.from({ length: 6 }, (_, i) => (
                 <span

@@ -11,7 +11,7 @@ export function Tally({ orders }: { orders: Order[] }) {
   if (orders.length === 0) return null;
   const bill = estimatedBill(orders.length);
   return (
-    <section aria-labelledby="tally-title" className="glass p-5 sm:p-6">
+    <section aria-labelledby="tally-title" className="glass card-pad">
       <h2 id="tally-title" className="flex items-center gap-2 font-display text-2xl">
         <ChefHat className="h-6 w-6 text-gold-300" aria-hidden="true" />
         Kitchen tally
@@ -43,14 +43,14 @@ export function Tally({ orders }: { orders: Order[] }) {
                     <li key={dish.id} className="text-sm">
                       <div className="grid grid-cols-[1.25rem_1fr_2rem] items-center gap-2">
                         <DishIcon icon={dish.icon} className="h-4 w-4 text-gold-300" />
-                        <div className="relative h-7 overflow-hidden rounded-lg bg-white/5">
+                        <div className="relative min-h-7 overflow-hidden rounded-lg bg-white/5">
                           <motion.div
                             className={`absolute inset-y-0 left-0 rounded-lg bg-gradient-to-r ${BAR[ci]} opacity-80`}
                             initial={{ width: 0 }}
                             animate={{ width: `${(n / max) * 100}%` }}
                             transition={{ type: 'spring', stiffness: 80, damping: 16 }}
                           />
-                          <span className="relative flex h-full items-center truncate px-2 font-medium">{dish.shortName}</span>
+                          <span className="relative flex min-h-7 items-center px-2 py-1 font-medium leading-tight">{dish.shortName}</span>
                         </div>
                         <span className="text-right font-display text-lg tabular-nums">{n}</span>
                       </div>
