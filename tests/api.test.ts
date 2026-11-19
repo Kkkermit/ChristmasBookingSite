@@ -394,6 +394,20 @@ describe('database failures', () => {
     expect(body).not.toContain('secret');
   });
 
+  it('still lets people log in when the database is unreachable (the guess counter is best-effort)', async () => {
+    const store = new MemoryStore();
+    const down = async () => {
+      throw Object.assign(new Error('(ENOTFOUND) tenant/user xmas_app.ref not found'), { code: 'XX000' });
+    };
+    store.peek = down;
+    store.hit = down;
+    const { app } = makeApp({ store });
+    const ok = await app(req('POST', '/api/auth/login', { body: { password: TEST_PASSWORD } }));
+    expect(ok.status).toBe(200);
+    const bad = await app(req('POST', '/api/auth/login', { body: { password: 'nope' } }));
+    expect(bad.status).toBe(401);
+  });
+
   it('hides unexpected errors behind a generic 500', async () => {
     const store = new MemoryStore();
     store.getDetails = async () => {

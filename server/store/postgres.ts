@@ -144,23 +144,35 @@ export function createPostgresClient(url: string, overrides: postgres.Options<Re
 }
 
 /**
- * Supabase serves each region from more than one pooler cluster
- * (aws-0-<region> / aws-1-<region>). If the configured one doesn't know this
- * project ("Tenant or user not found"), try the sibling cluster.
+ * Supabase serves each region from more than one shared-pooler cluster
+ * (aws-0-<region>, aws-1-<region>, ...) and a project lives on exactly one.
+ * Connecting to the wrong one fails with "tenant/user <user>.<ref> not found",
+ * so we try the configured host first and then its siblings.
  */
 export function poolerCandidates(url: string): string[] {
-  const match = /@aws-(\d)-([a-z0-9-]+)\.pooler\.supabase\.com/.exec(url);
+  const match = /@aws-(?:(\d)-)?([a-z]+-[a-z]+-\d)\.pooler\.supabase\.com/.exec(url);
   if (!match) return [url];
-  const other = match[1] === '0' ? '1' : '0';
-  return [url, url.replace(`@aws-${match[1]}-`, `@aws-${other}-`)];
+  const host = match[0];
+  const region = match[2];
+  const variants = ['0', '1', '2'].map((n) => `@aws-${n}-${region}.pooler.supabase.com`);
+  variants.push(`@aws-${region}.pooler.supabase.com`);
+  return [url, ...variants.filter((v) => v !== host).map((v) => url.replace(host, v))];
 }
 
-function isWrongPooler(err: unknown): boolean {
+/** True when the error means "this pooler doesn't host the project" (try the next one). */
+export function isWrongPooler(err: unknown): boolean {
   const e = err as { code?: string; message?: string };
-  return e?.code === 'ENOTFOUND' || /tenant or user not found/i.test(e?.message ?? '');
+  const message = e?.message ?? '';
+  return (
+    e?.code === 'ENOTFOUND' ||
+    e?.code === 'EAI_AGAIN' ||
+    /tenant\s*(\/|or)\s*user\b.*not found/i.test(message) ||
+    /tenant or user not found/i.test(message)
+  );
 }
 
 const redact = (text: string) => text.replace(/postgres(ql)?:\/\/\S+/g, '<db-url>');
+const hostOf = (url: string) => /@([^:/]+)/.exec(url)?.[1] ?? 'database';
 
 /**
  * Connects, checking the database answers. Never throws: if every attempt
@@ -173,18 +185,18 @@ export async function connectPostgres(url: string): Promise<PostgresStore> {
     const sql = createPostgresClient(candidate);
     try {
       await sql`select 1`;
-      const host = /@([^:/]+)/.exec(candidate)?.[1] ?? 'database';
-      console.log(`[db] connected via ${host}`);
+      console.log(`[db] connected via ${hostOf(candidate)}${i > 0 ? ' (update DATABASE_URL to this host for faster cold starts)' : ''}`);
       return new PostgresStore(sql);
     } catch (err) {
       const e = err as { code?: string; message?: string };
-      console.error(`[db] connection attempt ${i + 1} failed: [${e?.code ?? 'error'}] ${redact(e?.message ?? String(err))}`);
-      if (i === candidates.length - 1 || !isWrongPooler(err)) {
-        // Keep this client; queries will retry the connection on demand.
-        return new PostgresStore(sql);
-      }
+      console.error(`[db] ${hostOf(candidate)} failed: [${e?.code ?? 'error'}] ${redact(e?.message ?? String(err))}`);
       await sql.end({ timeout: 1 }).catch(() => {});
+      // Only a "wrong pooler" error is worth trying elsewhere; anything else
+      // (bad password, database down) would fail on every host.
+      if (!isWrongPooler(err)) break;
     }
   }
+  // Nothing answered: keep a client for the configured URL - queries retry the
+  // connection on demand and the API reports DB_UNAVAILABLE meanwhile.
   return new PostgresStore(createPostgresClient(url));
 }

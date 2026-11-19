@@ -6,7 +6,13 @@ import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chooseStore } from '../server/store/index.js';
 import { MemoryStore } from '../server/store/memory.js';
-import { PostgresStore, connectPostgres, createPostgresClient, poolerCandidates } from '../server/store/postgres.js';
+import {
+  PostgresStore,
+  connectPostgres,
+  createPostgresClient,
+  isWrongPooler,
+  poolerCandidates,
+} from '../server/store/postgres.js';
 import { RedisStore, type RedisCommands } from '../server/store/redis.js';
 import { DuplicateNameError, type Store } from '../server/store/types.js';
 import type { Order } from '../shared/types.js';
@@ -183,13 +189,26 @@ describe('PostgresStore (real Postgres via PGlite, running db/migrations)', () =
   });
 });
 
-describe('poolerCandidates', () => {
-  it('offers the sibling Supabase pooler cluster as a fallback', () => {
-    expect(poolerCandidates('postgres://u.ref:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres')).toEqual([
-      'postgres://u.ref:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres',
-      'postgres://u.ref:pw@aws-1-eu-west-2.pooler.supabase.com:6543/postgres',
+describe('Supabase pooler fallback', () => {
+  const url = (host: string) => `postgres://xmas_app.ref:pw@${host}.pooler.supabase.com:6543/postgres`;
+
+  it('tries the configured pooler first, then every sibling cluster in the same region', () => {
+    expect(poolerCandidates(url('aws-0-eu-west-2'))).toEqual([
+      url('aws-0-eu-west-2'),
+      url('aws-1-eu-west-2'),
+      url('aws-2-eu-west-2'),
+      url('aws-eu-west-2'),
     ]);
+    expect(poolerCandidates(url('aws-1-eu-west-2'))[1]).toBe(url('aws-0-eu-west-2'));
     expect(poolerCandidates('postgres://u:p@db.example.com:5432/x')).toEqual(['postgres://u:p@db.example.com:5432/x']);
+  });
+
+  it("recognises Supavisor's 'wrong cluster' errors (old and new wording) and DNS misses", () => {
+    expect(isWrongPooler({ code: 'XX000', message: '(ENOTFOUND) tenant/user xmas_app.fejjvfxzkwzmxwbzfjvg not found' })).toBe(true);
+    expect(isWrongPooler({ code: 'XX000', message: 'Tenant or user not found' })).toBe(true);
+    expect(isWrongPooler({ code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND aws-2-eu-west-2.pooler.supabase.com' })).toBe(true);
+    expect(isWrongPooler({ code: '28P01', message: 'password authentication failed for user "xmas_app"' })).toBe(false);
+    expect(isWrongPooler({ code: 'ECONNREFUSED', message: 'connect ECONNREFUSED' })).toBe(false);
   });
 });
 

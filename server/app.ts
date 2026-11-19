@@ -198,12 +198,24 @@ export function createApp(deps: AppDeps): Handler {
     const rateKey = `login-fail:${clientIp(request)}`;
     const tooMany = () =>
       new HttpError(429, 'Too many wrong guesses. Have a mince pie and try again in 15 minutes.', 'RATE_LIMITED');
-    if (store && (await store.peek(rateKey)) >= LOGIN_MAX_FAILURES) throw tooMany();
+    // The counter lives in the database. If the database is unreachable we still
+    // check the password (scrypt keeps guessing slow) so people can get in and
+    // see a clear "database is down" message, rather than a broken login.
+    const counter = async (op: () => Promise<number>): Promise<number> => {
+      if (!store) return 0;
+      try {
+        return await op();
+      } catch (err) {
+        console.error('Login rate limit unavailable', describeError(err));
+        return 0;
+      }
+    };
+    if ((await counter(() => store!.peek(rateKey))) >= LOGIN_MAX_FAILURES) throw tooMany();
 
     const body = (await readJson(request)) as { password?: unknown };
     const password = typeof body.password === 'string' ? body.password : '';
     if (!password || password.length > 200 || !config.checkPassword(password)) {
-      if (store && (await store.hit(rateKey, LOGIN_WINDOW_SECONDS)) > LOGIN_MAX_FAILURES) throw tooMany();
+      if ((await counter(() => store!.hit(rateKey, LOGIN_WINDOW_SECONDS))) > LOGIN_MAX_FAILURES) throw tooMany();
       throw new HttpError(401, "That's not the magic word. Try again!", 'BAD_PASSWORD');
     }
     return json(200, { authenticated: true }, { 'Set-Cookie': sessionCookie(createSessionToken(sessionKey, now()), secure) });
