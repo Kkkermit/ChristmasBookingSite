@@ -13,12 +13,14 @@ import { colourFor, initials } from '../lib/format';
 export function BaubleGarland({ orders, partySize }: { orders: Order[]; partySize: number }) {
   const slots = Math.max(partySize, orders.length);
   return (
-    <ol className="grid grid-cols-6 gap-y-2 sm:grid-cols-12" aria-label="Who has ordered">
+    // Fixed-width cells in a centred wrap: full rows look like a grid, and a
+    // partial last row (more than 12 guests) stays centred rather than left-aligned.
+    <ol className="flex flex-wrap justify-center gap-y-2" aria-label="Who has ordered">
       {Array.from({ length: slots }, (_, i) => {
         const order = orders[i];
         const colour = order ? colourFor(order.name) : undefined;
         return (
-          <li key={i} className="relative flex justify-center pt-2.5">
+          <li key={i} className="relative flex w-1/6 justify-center pt-2.5 sm:w-1/12">
             <svg
               viewBox="0 0 100 20"
               preserveAspectRatio="none"

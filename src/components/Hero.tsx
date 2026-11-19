@@ -26,8 +26,10 @@ export function Hero({ config, orders }: { config: PublicConfig; orders: Order[]
       >
         <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-300/40 bg-gold-300/10 px-3 py-1.5 text-[0.7rem] font-bold uppercase leading-none tracking-[0.12em] sm:text-xs sm:tracking-[0.15em] text-gold-300">
           <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-          {RESTAURANT.name}
-          <span className="hidden min-[360px]:inline">, {RESTAURANT.location}</span>
+          <span>
+            {RESTAURANT.name}
+            <span className="hidden min-[360px]:inline">, {RESTAURANT.location}</span>
+          </span>
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-[0.7rem] font-bold uppercase leading-none tracking-[0.12em] sm:text-xs sm:tracking-[0.15em] text-white/80">
           <PoundSterling className="h-3.5 w-3.5" aria-hidden="true" />
