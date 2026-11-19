@@ -1,5 +1,25 @@
 import type { BookingDetails, Order } from '../../shared/types.js';
 
+/** Thrown when another order already uses the same (normalised) name. */
+export class DuplicateNameError extends Error {
+  constructor() {
+    super('Someone with this name has already ordered');
+    this.name = 'DuplicateNameError';
+  }
+}
+
+/** Fills in fields added after an order was first stored. */
+export function normaliseOrder(order: Order): Order {
+  const stored = order as Partial<Order> & Order;
+  return {
+    ...order,
+    starterOption: stored.starterOption ?? '',
+    mainOption: stored.mainOption ?? '',
+    dessertOption: stored.dessertOption ?? '',
+    notes: stored.notes ?? '',
+  };
+}
+
 export interface Store {
   readonly kind: string;
   listOrders(): Promise<Order[]>;

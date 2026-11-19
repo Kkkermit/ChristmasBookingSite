@@ -1,11 +1,13 @@
+import { LogOut, ScrollText, UtensilsCrossed, Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Spinner } from './Spinner';
 import { ChristmasTree } from './decor/ChristmasTree';
 import { FairyLights } from './decor/FairyLights';
 
 const LINKS = [
-  { href: '#order', label: 'Order', icon: '🍽️' },
-  { href: '#nice-list', label: 'Nice list', icon: '📜' },
-  { href: '#workshop', label: 'Workshop', icon: '🧾' },
+  { href: '#order', label: 'Order', Icon: UtensilsCrossed },
+  { href: '#nice-list', label: 'Nice list', Icon: ScrollText },
+  { href: '#workshop', label: 'Workshop', Icon: Wrench },
 ];
 
 export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut: boolean }) {
@@ -29,15 +31,15 @@ export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut:
               <a
                 key={l.href}
                 href={l.href}
-                className="rounded-xl px-3 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
+                className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
               >
-                <span className="mr-1.5">{l.icon}</span>
+                <l.Icon className="h-4 w-4" aria-hidden="true" />
                 {l.label}
               </a>
             ))}
           </nav>
           <button type="button" onClick={onLogout} disabled={loggingOut} className="btn-ghost min-h-10 px-3 py-2 text-sm">
-            <span aria-hidden="true">🚪</span>
+            {loggingOut ? <Spinner className="h-4 w-4" /> : <LogOut className="h-4 w-4" aria-hidden="true" />}
             <span>{loggingOut ? 'Leaving…' : 'Log out'}</span>
           </button>
         </div>
@@ -56,7 +58,7 @@ export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut:
             href={l.href}
             className="flex flex-col items-center gap-0.5 rounded-xl py-1.5 text-xs font-semibold text-white/80 active:bg-white/10"
           >
-            <span className="text-lg leading-none">{l.icon}</span>
+            <l.Icon className="h-5 w-5" aria-hidden="true" />
             {l.label}
           </a>
         ))}

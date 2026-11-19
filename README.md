@@ -5,16 +5,25 @@ Smokehouse & Cellar Christmas meal. Once everyone has ordered, anyone can downlo
 **booking form PDF, already filled in** — names, ticks and allergies — ready to send.
 
 Built with **Vite + React + TypeScript + Tailwind CSS v4**, animated with **Motion**, with a single
-**Vercel Function** API backed by **Upstash Redis**.
+**Vercel Function** API backed by **Supabase Postgres**, and Vercel Routing Middleware that hides the
+whole site from anyone without the password.
 
 ## Features
 
-- 🔐 **Password gate** on the site and on **every API endpoint** (only login/logout are public).
-- 🍽️ **Select-only ordering** — dishes come straight from the booking form (4 starters, 5 mains, 4 desserts).
-  Starters and desserts can be skipped; the main can't.
+- 🔐 **Password gate at the edge** — without a valid session, every URL shows only a login page; the app
+  code, the menu PDF and all data are never served. Every API endpoint (except login/logout) checks too.
+- 🙈 **Hidden from search engines and AI scrapers** — `noindex` everywhere (headers + meta), a `robots.txt`
+  that names every major search/AI/SEO/archive crawler, and Vercel Firewall rules that block bots outright.
+- 🍽️ **Select-only ordering from the real menu** — "Christmas at the Smokehouse 2026": every dish with its
+  description and Vegan / gluten-free labels. Starters and desserts can be skipped; the main can't.
+  The menu's own choices are picked from a list too: **gluten-free soup** and **fudge cake with cream or ice cream**
+  (both written into the booking form's requirements column).
 - ✏️ **Edit and delete** orders, with duplicate-name protection.
 - ⏳ **Deadline 8 December 2026** — live countdown; after midnight orders are locked (server-enforced).
-- 🎁 **Progress garland** — a bauble lights up with each person's initials as they order, plus a live kitchen tally.
+- 🎁 **Progress garland** — a bauble lights up with each person's initials as they order, plus a live kitchen
+  tally and a food-bill estimate (£39.95 pp + 10% service).
+- ⏳ **Proper loading, empty and error states** — skeleton screens, spinners on every action, retryable
+  error panels (offline, database down, server error), an offline banner and a crash-proof error boundary.
 - 🧾 **Auto-filled booking form** — the restaurant's PDF filled in alphabetically, with the header details
   (lead booker, phone, date, time…) and total guests. It stays editable for last-minute tweaks.
 - 📖 **Menu download** for everyone who's logged in.
@@ -22,19 +31,21 @@ Built with **Vite + React + TypeScript + Tailwind CSS v4**, animated with **Moti
   calms down for anyone with "reduce motion" switched on.
 - 📱 Fully responsive, with a thumb-friendly nav on phones.
 
-## Deploy to Vercel (about 5 minutes)
+## Deployment
 
-1. **Import the repo** at [vercel.com/new](https://vercel.com/new). Everything is pre-configured in
-   `vercel.json` — just press **Deploy**.
-2. **Add the database**: in the project, open **Storage → Create Database → Upstash for Redis** (the free
-   plan is plenty), and **connect it to the project** for all environments. This adds `KV_REST_API_URL`
-   and `KV_REST_API_TOKEN` automatically.
-3. **Redeploy** (Deployments → ⋯ → Redeploy) so the function picks up the new variables.
+The live site runs on Vercel (project in the *Kkermit's projects* team) with a Supabase Postgres database
+(project `christmas-feast-2026`, London). The URL is shared privately and deliberately not written here.
 
-That's it — open the site and enter the password.
+Environment variables on Vercel (Production + Preview, all *sensitive*):
 
-> Until step 2 is done the site still loads and accepts the password, but shows a "connect the database"
-> message instead of the order form.
+| Variable         | What                                                                                          |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | Supabase pooler URL for the least-privilege `xmas_app` role (see `db/migrations`).            |
+| `SESSION_SECRET` | Long random string used to sign login cookies.                                                 |
+
+To set up from scratch: create a Supabase project, run `db/migrations/001_init.sql`, create the
+`xmas_app` role and run `002_app_role.sql`, then import this repo into Vercel and add the two variables.
+The app also works with `POSTGRES_URL` (Neon/Vercel Postgres) or Upstash Redis (`KV_REST_API_URL`/`TOKEN`).
 
 ### The password
 
@@ -55,20 +66,21 @@ To change it, add an environment variable in Vercel and redeploy (this also logs
 | `ORDER_DEADLINE`  | `2026-12-08T23:59:59Z`                   | When orders lock (ISO date/time).                          |
 | `PARTY_SIZE`      | `12`                                     | How many orders we're waiting for.                         |
 | `MAX_GUESTS`      | `18`                                     | Hard cap — the booking form has 18 rows.                   |
-| `SESSION_SECRET`  | the Redis token                          | Secret used to sign login cookies.                         |
-| `MENU_URL`        | Smokehouse & Cellar menu PDF             | Where the "Download menu" button fetches the menu from.    |
-| `REDIS_URL`       | —                                        | Use any `redis://`/`rediss://` server instead of Upstash.  |
+| `REDIS_URL`       | —                                        | Use any `redis://`/`rediss://` server instead of Postgres. |
 
-## Security
+## Security & privacy
 
-- Every `/api/*` route except login/logout checks a **signed, HttpOnly, `SameSite=Strict`, `Secure`
-  session cookie** (HMAC-SHA256, 30-day expiry). Without it you get `401` and nothing changes.
-- **Brute-force protection**: 10 wrong passwords from one IP → locked out for 15 minutes. Correct logins
-  don't count, so an office sharing one IP is fine.
+- **Edge gate** (`middleware.ts`): without a valid session cookie the only files anyone can load are the
+  login page, the generic UI framework code, the favicon and `robots.txt`. A build check
+  (`scripts/check-public-assets.mjs`) fails the build if anything about the event leaks into those files.
+- **API**: every route except login/logout checks a **signed, HttpOnly, `SameSite=Strict`, `Secure` session
+  cookie** (HMAC-SHA256, 30-day expiry). Without it you get `401` and nothing changes.
+- **Brute-force protection**: 10 wrong passwords from one IP → locked out for 15 minutes (only failures count).
+- **Database**: tables live in a private `xmas` schema (not exposed by Supabase's public APIs) with RLS on;
+  the app connects as `xmas_app`, which can only read/write those three tables. Names are unique at the
+  database level, so two people can't grab the same name at once.
 - Writes must be same-origin JSON; all input is validated on the server against the menu.
-- Strict security headers (CSP, no framing, `noindex`) and `robots.txt` keep the site out of search engines.
-- The page's code (HTML/JS) is public like any website, but contains **no orders or personal data** —
-  that all lives behind the API.
+- `noindex, nofollow, noarchive, nosnippet, noimageindex, noai` on every response, strict CSP, no framing.
 
 ## Run it locally
 
@@ -80,6 +92,9 @@ npm run build        # type-check and production build
 ```
 
 ## How the booking form works
+
+Each guest's row gets a tick per dish, and the requirements column combines their dish options with any
+allergy notes (e.g. `GF soup; Fudge cake w/ ice cream; Nut allergy`).
 
 `server/assets/booking-form-template.pdf` is a cleaned, blank copy of the restaurant's fillable form
 (the original had been pre-filled on a phone and carried 5 MB of editor data).
@@ -98,9 +113,12 @@ node scripts/clean-template.mjs path/to/new-form.pdf
 
 ```
 api/index.ts            The single Vercel Function (all /api/* routes are rewritten here)
-server/                 API: routing, auth, config, storage, PDF filling
+middleware.ts           Edge gate - hides everything but the login page from strangers
+db/migrations/          Postgres schema and least-privilege role
+server/                 API: routing, auth, config, storage (Postgres/Redis/file), PDF filling
 shared/                 Menu, types and validation shared by the site and the API
-src/                    React app (components, hooks, styles)
+src/                    React app (main.tsx = the app, login.tsx = the public login page)
+public/files/           The restaurant's menu PDF (only served after logging in)
 tests/                  API, auth, PDF, storage and validation tests
 scripts/                Password hashing and PDF template tools
 ```

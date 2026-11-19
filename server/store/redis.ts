@@ -1,5 +1,5 @@
 import type { BookingDetails, Order } from '../../shared/types.js';
-import { DETAILS_KEY, ORDERS_KEY, rateKey, type Store } from './types.js';
+import { DETAILS_KEY, ORDERS_KEY, normaliseOrder, rateKey, type Store } from './types.js';
 
 /** The handful of Redis commands the app needs - implemented by both clients below. */
 export interface RedisCommands {
@@ -33,11 +33,13 @@ export class RedisStore implements Store {
     const all = await this.redis.hgetall(ORDERS_KEY);
     return Object.values(all ?? {})
       .map((raw) => parse<Order>(raw))
-      .filter((o): o is Order => o !== null);
+      .filter((o): o is Order => o !== null)
+      .map(normaliseOrder);
   }
 
   async getOrder(id: string) {
-    return parse<Order>(await this.redis.hget(ORDERS_KEY, id));
+    const order = parse<Order>(await this.redis.hget(ORDERS_KEY, id));
+    return order ? normaliseOrder(order) : null;
   }
 
   async saveOrder(order: Order) {

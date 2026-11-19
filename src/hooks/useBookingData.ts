@@ -11,18 +11,29 @@ function byCreated(a: Order, b: Order) {
 /**
  * Loads the shared state and keeps it fresh (polling + on tab focus) so you
  * see other people's orders appear without refreshing.
+ *
+ * - `state` null + `error` null  -> first load in progress (show skeleton)
+ * - `state` null + `error`       -> first load failed (show error with retry)
+ * - `state` + `refreshFailed`    -> showing the last good data, background refresh failing
  */
 export function useBookingData(onUnauthenticated: () => void) {
   const [state, setState] = useState<AppState | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const unauthRef = useRef(onUnauthenticated);
   unauthRef.current = onUnauthenticated;
+  const inFlight = useRef(false);
 
   const reload = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setRefreshing(true);
     try {
       const next = await api.state();
       setState(next);
       setError(null);
+      setRefreshFailed(false);
     } catch (err) {
       const apiErr = err instanceof ApiError ? err : new ApiError(0, 'Something went wrong');
       if (apiErr.status === 401) {
@@ -30,6 +41,10 @@ export function useBookingData(onUnauthenticated: () => void) {
         return;
       }
       setError(apiErr);
+      setRefreshFailed(true);
+    } finally {
+      inFlight.current = false;
+      setRefreshing(false);
     }
   }, []);
 
@@ -40,9 +55,11 @@ export function useBookingData(onUnauthenticated: () => void) {
     }, POLL_MS);
     const onFocus = () => void reload();
     window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onFocus);
     return () => {
       clearInterval(timer);
       window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onFocus);
     };
   }, [reload]);
 
@@ -58,5 +75,5 @@ export function useBookingData(onUnauthenticated: () => void) {
     setState((s) => (s ? { ...s, details } : s));
   }, []);
 
-  return { state, error, reload, upsertOrder, removeOrder, setDetails };
+  return { state, error, refreshing, refreshFailed, reload, upsertOrder, removeOrder, setDetails };
 }

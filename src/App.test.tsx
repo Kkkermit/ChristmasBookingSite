@@ -39,7 +39,26 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Josh' })).toBeInTheDocument();
     expect(screen.getByText(/elves have ordered/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /download booking form/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /download menu/i })).toHaveAttribute('href', '/api/menu');
+    expect(screen.getByRole('link', { name: /download menu/i })).toHaveAttribute('href', '/files/smokehouse-christmas-menu-2026.pdf');
+  });
+
+  it('shows a skeleton while loading, then a retryable error if the database is down', async () => {
+    let fail = true;
+    mockFetch((url) => {
+      if (url === '/api/auth/session') return { status: 200, body: { authenticated: true } };
+      if (url === '/api/state') {
+        return fail
+          ? { status: 503, body: { error: "Can't reach the North Pole database right now", code: 'DB_UNAVAILABLE' } }
+          : { status: 200, body: { config: config(), orders: [], details: emptyDetails } };
+      }
+      return undefined;
+    });
+    render(<App />);
+    expect(await screen.findByRole('status', { name: 'Loading the orders' })).toBeInTheDocument();
+    expect(await screen.findByText('The database is napping')).toBeInTheDocument();
+    fail = false;
+    await userEvent.click(screen.getByRole('button', { name: /try again/i }));
+    expect(await screen.findByText('No orders yet')).toBeInTheDocument();
   });
 
   it('returns to the password gate if the session expires', async () => {

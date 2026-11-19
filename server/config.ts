@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { verifyPasswordHash, verifyPlainPassword } from './auth.js';
-import { DEFAULT_MENU_URL } from '../shared/menu.js';
 
 /**
  * Salted scrypt hash of the agreed site password. Only the hash lives in the
@@ -25,7 +24,6 @@ export interface ServerConfig {
   deadline: Date;
   partySize: number;
   maxGuests: number;
-  menuUrl: string;
   isProduction: boolean;
 }
 
@@ -51,10 +49,13 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     .digest('base64url')
     .slice(0, 16);
 
-  // Any server-only secret will do for signing sessions. The Redis token is
-  // always present once storage is connected, so the site works out of the box.
+  // Any server-only secret will do for signing sessions. The database
+  // credentials are always present once storage is connected, so the site
+  // works out of the box (SESSION_SECRET is still recommended).
   const sessionSecret =
     env.SESSION_SECRET ||
+    env.DATABASE_URL ||
+    env.POSTGRES_URL ||
     env.KV_REST_API_TOKEN ||
     env.UPSTASH_REDIS_REST_TOKEN ||
     env.REDIS_URL ||
@@ -62,7 +63,7 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     (isProduction ? '' : DEV_SESSION_SECRET);
   if (!sessionSecret) {
     throw new ConfigError(
-      'No session secret configured. Connect Upstash Redis or set SESSION_SECRET in the Vercel project settings.',
+      'No session secret configured. Set SESSION_SECRET (and DATABASE_URL) in the Vercel project settings.',
     );
   }
 
@@ -81,7 +82,6 @@ export function loadConfig(env: Env = process.env): ServerConfig {
     deadline,
     partySize,
     maxGuests,
-    menuUrl: env.MENU_URL || DEFAULT_MENU_URL,
     isProduction,
   };
 }

@@ -23,7 +23,6 @@ export function makeApp(
     store,
     loadTemplate: async () => template,
     now: () => clock.now,
-    fetchImpl: overrides.fetchImpl ?? (async () => new Response('offline', { status: 503 })),
     ...overrides,
   });
   return { app, store, config, clock };
@@ -56,8 +55,11 @@ export async function login(app: (r: Request) => Promise<Response>, password = T
 export const sampleOrder = (overrides: Partial<OrderInput> = {}): OrderInput => ({
   name: 'Josh',
   starter: 'smoked_chicken_wings',
+  starterOption: '',
   main: 'ultimate_xmas_burger',
+  mainOption: '',
   dessert: 'trillionaires_tart',
+  dessertOption: '',
   notes: '',
   ...overrides,
 });

@@ -1,73 +1,74 @@
+import { Ban, Check, ChefHat, Lock, Save, Send, TriangleAlert, UserRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useState, type FormEvent } from 'react';
-import { COURSES, SKIP, choiceEmoji, choiceLabel, type Course, type CourseId } from '../../shared/menu';
+import {
+  COURSES,
+  SKIP,
+  choiceLabel,
+  findDish,
+  optionField,
+  type Course,
+  type CourseId,
+  type Dish,
+} from '../../shared/menu';
 import type { Order, OrderInput, PublicConfig } from '../../shared/types';
 import { LIMITS, nameKey, validateOrderInput } from '../../shared/validation';
 import { ApiError, api } from '../lib/api';
+import { DietaryBadges, DishIcon, Spinner } from './icons';
+import { StatePanel } from './states';
 import { useToast } from './Toasts';
 
-const EMPTY: OrderInput = { name: '', starter: '', main: '', dessert: '', notes: '' };
+const EMPTY: OrderInput = {
+  name: '',
+  starter: '',
+  starterOption: '',
+  main: '',
+  mainOption: '',
+  dessert: '',
+  dessertOption: '',
+  notes: '',
+};
 
-function DishOption({
-  name,
-  value,
-  emoji,
-  title,
-  tagline,
-  checked,
-  onSelect,
-  muted,
-}: {
-  name: string;
-  value: string;
-  emoji: string;
-  title: string;
-  tagline: string;
-  checked: boolean;
-  onSelect(value: string): void;
-  muted?: boolean;
-}) {
+function DishCard({ name, dish, checked, onSelect }: { name: string; dish: Dish; checked: boolean; onSelect(): void }) {
   return (
     <motion.label
       layout
-      whileHover={{ y: -4 }}
-      whileTap={{ scale: 0.96 }}
-      className={`group relative flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border p-3 text-center transition-colors has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+      whileHover={{ y: -3 }}
+      whileTap={{ scale: 0.98 }}
+      className={`group relative flex cursor-pointer gap-3 rounded-2xl border p-3.5 transition-colors has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
         checked
-          ? 'border-gold-400 bg-gradient-to-b from-gold-400/25 to-holly-500/15 shadow-lg shadow-gold-500/20'
-          : muted
-            ? 'border-dashed border-white/15 bg-white/[0.02] hover:border-white/30'
-            : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+          ? 'border-gold-400 bg-gradient-to-br from-gold-400/20 to-holly-500/10 shadow-lg shadow-gold-500/15'
+          : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
       }`}
     >
-      <input
-        type="radio"
-        name={name}
-        value={value}
-        checked={checked}
-        onChange={() => onSelect(value)}
-        className="sr-only"
-      />
+      <input type="radio" name={name} value={dish.id} checked={checked} onChange={onSelect} className="sr-only" />
       <motion.span
         aria-hidden="true"
-        className="text-3xl sm:text-4xl"
-        animate={checked ? { rotate: [0, -14, 12, -6, 0], scale: [1, 1.35, 1.15] } : { rotate: 0, scale: 1 }}
-        transition={{ duration: 0.55 }}
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+          checked ? 'bg-gold-400 text-night-950' : 'bg-white/10 text-gold-300 group-hover:bg-white/15'
+        }`}
+        animate={checked ? { rotate: [0, -12, 10, -5, 0], scale: [1, 1.18, 1.05] } : { rotate: 0, scale: 1 }}
+        transition={{ duration: 0.5 }}
       >
-        {emoji}
+        <DishIcon icon={dish.icon} className="h-6 w-6" />
       </motion.span>
-      <span className={`text-sm font-bold leading-tight ${muted && !checked ? 'text-white/60' : ''}`}>{title}</span>
-      <span className="text-[0.7rem] leading-tight text-white/55">{tagline}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-6">
+          <span className="font-bold leading-tight">{dish.name}</span>
+          <DietaryBadges dietary={dish.dietary} />
+        </span>
+        <span className="mt-1 block text-[0.8rem] leading-snug text-white/60">{dish.description}</span>
+      </span>
       <AnimatePresence>
         {checked && (
           <motion.span
             initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 12 }}
+            animate={{ scale: 1, rotate: 0 }}
             exit={{ scale: 0 }}
-            className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-gold-400 text-sm font-black text-night-950 shadow-lg"
+            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-gold-400 text-night-950 shadow"
             aria-hidden="true"
           >
-            ✓
+            <Check className="h-4 w-4" strokeWidth={3} />
           </motion.span>
         )}
       </AnimatePresence>
@@ -75,22 +76,92 @@ function DishOption({
   );
 }
 
-function CoursePicker({
-  course,
-  index,
+function OptionPicker({
+  dish,
+  name,
   value,
   error,
   onChange,
+  errorId,
+}: {
+  dish: Dish;
+  name: string;
+  value: string;
+  error?: string;
+  onChange(value: string): void;
+  errorId: string;
+}) {
+  const options = dish.options!;
+  return (
+    <motion.fieldset
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+      aria-describedby={error ? errorId : undefined}
+    >
+      <div className={`mt-3 rounded-2xl border p-3 ${error ? 'border-holly-400/60 bg-holly-500/10' : 'border-gold-400/30 bg-gold-400/5'}`}>
+        <legend className="sr-only">
+          {dish.name}: {options.question}
+        </legend>
+        <p className="mb-2 text-sm font-semibold text-gold-300" aria-hidden="true">
+          {dish.shortName} · {options.question}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {options.choices.map((choice) => {
+            const checked = value === choice.id;
+            return (
+              <label
+                key={choice.id}
+                className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+                  checked ? 'border-gold-400 bg-gold-400 text-night-950' : 'border-white/15 bg-white/5 hover:bg-white/10'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={name}
+                  value={choice.id}
+                  checked={checked}
+                  onChange={() => onChange(choice.id)}
+                  className="sr-only"
+                />
+                {checked && <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />}
+                {choice.label}
+              </label>
+            );
+          })}
+        </div>
+        {error && (
+          <p id={errorId} role="alert" className="mt-2 text-sm font-medium text-holly-400">
+            {error}
+          </p>
+        )}
+      </div>
+    </motion.fieldset>
+  );
+}
+
+function CoursePicker({
+  course,
+  index,
+  values,
+  errors,
+  onPick,
+  onOption,
   idPrefix,
 }: {
   course: Course;
   index: number;
-  value: string;
-  error?: string;
-  onChange(value: string): void;
+  values: OrderInput;
+  errors: Record<string, string>;
+  onPick(dishId: string): void;
+  onOption(optionId: string): void;
   idPrefix: string;
 }) {
-  const cols = course.dishes.length + (course.skippable ? 1 : 0);
+  const value = values[course.id];
+  const field = optionField(course.id);
+  const selected = findDish(course.id, value);
+  const error = errors[course.id];
   return (
     <fieldset aria-describedby={error ? `${idPrefix}-${course.id}-error` : undefined}>
       <legend className="mb-3 flex w-full items-center gap-3">
@@ -98,36 +169,50 @@ function CoursePicker({
           {index}
         </span>
         <span className="font-display text-2xl">{course.title}</span>
-        {course.skippable && <span className="ml-auto text-xs font-semibold text-white/50">or skip it</span>}
+        {course.skippable && <span className="ml-auto text-xs font-semibold text-white/50">optional</span>}
       </legend>
-      <div
-        className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${cols === 6 ? 'lg:grid-cols-6' : cols === 5 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}
-      >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {course.dishes.map((dish) => (
-          <DishOption
+          <DishCard
             key={dish.id}
             name={`${idPrefix}-${course.id}`}
-            value={dish.id}
-            emoji={dish.emoji}
-            title={dish.name}
-            tagline={dish.tagline}
+            dish={dish}
             checked={value === dish.id}
-            onSelect={onChange}
+            onSelect={() => onPick(dish.id)}
           />
         ))}
-        {course.skippable && (
-          <DishOption
+      </div>
+      {course.skippable && (
+        <label
+          className={`mt-3 inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-dashed px-3.5 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+            value === SKIP ? 'border-gold-400 bg-gold-400/15 text-gold-300' : 'border-white/20 text-white/60 hover:border-white/40 hover:text-white'
+          }`}
+        >
+          <input
+            type="radio"
             name={`${idPrefix}-${course.id}`}
             value={SKIP}
-            emoji="🙅"
-            title={`No ${course.singular}`}
-            tagline="Saving room!"
             checked={value === SKIP}
-            onSelect={onChange}
-            muted
+            onChange={() => onPick(SKIP)}
+            className="sr-only"
+          />
+          <Ban className="h-4 w-4" aria-hidden="true" />
+          No {course.singular} for me
+        </label>
+      )}
+      <AnimatePresence initial={false}>
+        {selected?.options && (
+          <OptionPicker
+            key={selected.id}
+            dish={selected}
+            name={`${idPrefix}-${field}`}
+            value={values[field]}
+            error={errors[field]}
+            onChange={onOption}
+            errorId={`${idPrefix}-${field}-error`}
           />
         )}
-      </div>
+      </AnimatePresence>
       {error && (
         <p id={`${idPrefix}-${course.id}-error`} role="alert" className="mt-2 text-sm font-medium text-holly-400">
           {error}
@@ -142,10 +227,11 @@ function PlatePreview({ values }: { values: OrderInput }) {
     <div className="flex items-center justify-center gap-2 sm:gap-3" aria-hidden="true">
       {COURSES.map((course, i) => {
         const value = values[course.id];
+        const dish = findDish(course.id, value);
         return (
           <div key={course.id} className="flex items-center gap-2 sm:gap-3">
             {i > 0 && <span className="text-white/30">→</span>}
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white/80 bg-gradient-to-br from-white to-slate-200 shadow-[inset_0_-4px_8px_rgba(0,0,0,0.15)] sm:h-16 sm:w-16">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white/80 bg-gradient-to-br from-white to-slate-200 text-night-800 shadow-[inset_0_-4px_8px_rgba(0,0,0,0.15)] sm:h-16 sm:w-16">
               <AnimatePresence mode="popLayout">
                 <motion.span
                   key={value || 'empty'}
@@ -153,9 +239,14 @@ function PlatePreview({ values }: { values: OrderInput }) {
                   animate={{ scale: 1, rotate: 0 }}
                   exit={{ scale: 0, rotate: 90 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                  className="text-2xl sm:text-3xl"
                 >
-                  {value ? choiceEmoji(course.id, value) : <span className="text-base text-slate-400">?</span>}
+                  {dish ? (
+                    <DishIcon icon={dish.icon} className="h-7 w-7 text-holly-600" />
+                  ) : value === SKIP ? (
+                    <Ban className="h-6 w-6 text-slate-400" />
+                  ) : (
+                    <span className="text-base font-bold text-slate-400">?</span>
+                  )}
                 </motion.span>
               </AnimatePresence>
             </div>
@@ -164,6 +255,15 @@ function PlatePreview({ values }: { values: OrderInput }) {
       })}
     </div>
   );
+}
+
+function plateSummary(values: OrderInput): string {
+  return COURSES.map((c) => {
+    const value = values[c.id];
+    if (!value) return `pick a ${c.singular}`;
+    const choice = findDish(c.id, value)?.options?.choices.find((o) => o.id === values[optionField(c.id)]);
+    return choice?.formNote ? `${choiceLabel(c.id, value)} (${choice.label.toLowerCase()})` : choiceLabel(c.id, value);
+  }).join(' · ');
 }
 
 interface OrderFormProps {
@@ -185,19 +285,47 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
     setErrors({});
     setValues(
       editing
-        ? { name: editing.name, starter: editing.starter, main: editing.main, dessert: editing.dessert, notes: editing.notes }
+        ? {
+            name: editing.name,
+            starter: editing.starter,
+            starterOption: editing.starterOption,
+            main: editing.main,
+            mainOption: editing.mainOption,
+            dessert: editing.dessert,
+            dessertOption: editing.dessertOption,
+            notes: editing.notes,
+          }
         : EMPTY,
     );
   }, [editing]);
 
-  const set = (key: keyof OrderInput) => (value: string) => {
-    setValues((v) => ({ ...v, [key]: value }));
+  const clearErrors = (...keys: string[]) =>
     setErrors((current) => {
-      if (!(key in current)) return current;
+      if (!keys.some((k) => k in current)) return current;
       const next = { ...current };
-      delete next[key];
+      for (const k of keys) delete next[k];
       return next;
     });
+
+  const setText = (key: 'name' | 'notes') => (value: string) => {
+    setValues((v) => ({ ...v, [key]: value }));
+    clearErrors(key);
+  };
+
+  const pickDish = (courseId: CourseId) => (dishId: string) => {
+    const field = optionField(courseId);
+    setValues((v) => {
+      if (v[courseId] === dishId) return v;
+      const options = findDish(courseId, dishId)?.options;
+      return { ...v, [courseId]: dishId, [field]: options?.defaultChoice ?? '' };
+    });
+    clearErrors(courseId, field);
+  };
+
+  const pickOption = (courseId: CourseId) => (optionId: string) => {
+    const field = optionField(courseId);
+    setValues((v) => ({ ...v, [field]: optionId }));
+    clearErrors(field);
   };
 
   const full = !editing && orders.length >= config.maxGuests;
@@ -235,25 +363,17 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
 
   if (!config.ordersOpen) {
     return (
-      <div className="glass p-8 text-center">
-        <div className="text-6xl">🔒</div>
-        <h3 className="mt-3 font-display text-3xl">Orders are closed</h3>
-        <p className="mt-2 text-white/70">
-          The deadline has passed, so the list is locked. Grab the completed booking form from Santa&apos;s Workshop below.
-        </p>
-      </div>
+      <StatePanel icon={Lock} title="Orders are closed" tone="warning">
+        The deadline has passed, so the list is locked. Grab the completed booking form from Santa&apos;s Workshop below.
+      </StatePanel>
     );
   }
 
   if (full) {
     return (
-      <div className="glass p-8 text-center">
-        <div className="text-6xl">🎁</div>
-        <h3 className="mt-3 font-display text-3xl">The table is full!</h3>
-        <p className="mt-2 text-white/70">
-          The booking form only has room for {config.maxGuests} guests. Edit an existing order if something needs changing.
-        </p>
-      </div>
+      <StatePanel icon={ChefHat} title="The table is full!" tone="warning">
+        The booking form only has room for {config.maxGuests} guests. Edit an existing order if something needs changing.
+      </StatePanel>
     );
   }
 
@@ -262,7 +382,8 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
       layout
       onSubmit={submit}
       noValidate
-      className={`glass relative space-y-7 p-5 sm:p-8 ${editing ? 'ring-2 ring-gold-400/70' : ''}`}
+      aria-busy={busy}
+      className={`glass relative space-y-8 p-5 sm:p-8 ${editing ? 'ring-2 ring-gold-400/70' : ''}`}
       aria-label={editing ? `Edit ${editing.name}'s order` : 'Place your order'}
     >
       <AnimatePresence>
@@ -273,8 +394,13 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
             exit={{ opacity: 0, y: -10 }}
             className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-400/40 bg-gold-400/10 px-4 py-3"
           >
-            <p className="font-semibold text-gold-300">✏️ Editing {editing.name}&apos;s order</p>
-            <button type="button" className="text-sm font-semibold text-white/80 underline-offset-4 hover:underline" onClick={onCancelEdit}>
+            <p className="font-semibold text-gold-300">Editing {editing.name}&apos;s order</p>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/80 hover:text-white"
+              onClick={onCancelEdit}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
               Cancel editing
             </button>
           </motion.div>
@@ -283,8 +409,8 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
 
       <div>
         <label htmlFor={`${idPrefix}-name`} className="mb-2 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-500 to-pine-700 text-lg shadow-lg shadow-pine-700/30">
-            🎅
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-500 to-pine-700 shadow-lg shadow-pine-700/30">
+            <UserRound className="h-5 w-5" aria-hidden="true" />
           </span>
           <span className="font-display text-2xl">Who&apos;s hungry?</span>
         </label>
@@ -295,7 +421,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
           autoComplete="name"
           maxLength={LIMITS.name}
           value={values.name}
-          onChange={(e) => set('name')(e.target.value)}
+          onChange={(e) => setText('name')(e.target.value)}
           aria-invalid={Boolean(errors.name)}
           aria-describedby={errors.name ? `${idPrefix}-name-error` : undefined}
         />
@@ -311,17 +437,18 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
           key={course.id}
           course={course}
           index={i + 1}
-          value={values[course.id as CourseId]}
-          error={errors[course.id]}
-          onChange={set(course.id)}
+          values={values}
+          errors={errors}
+          onPick={pickDish(course.id)}
+          onOption={pickOption(course.id)}
           idPrefix={idPrefix}
         />
       ))}
 
       <div>
         <label htmlFor={`${idPrefix}-notes`} className="mb-2 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-500 text-lg shadow-lg shadow-gold-500/30">
-            ⚠️
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-500 text-night-950 shadow-lg shadow-gold-500/30">
+            <TriangleAlert className="h-5 w-5" aria-hidden="true" />
           </span>
           <span className="font-display text-2xl">Allergies or requests</span>
           <span className="ml-auto text-xs font-semibold text-white/50">optional</span>
@@ -329,10 +456,10 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
         <input
           id={`${idPrefix}-notes`}
           className={`field ${errors.notes ? 'field-error' : ''}`}
-          placeholder="e.g. nut allergy, gluten free, no gravy…"
+          placeholder="e.g. nut allergy, no gravy…"
           maxLength={LIMITS.notes}
           value={values.notes}
-          onChange={(e) => set('notes')(e.target.value)}
+          onChange={(e) => setText('notes')(e.target.value)}
           aria-invalid={Boolean(errors.notes)}
           aria-describedby={`${idPrefix}-notes-hint`}
         />
@@ -344,15 +471,14 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
       <div className="rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5">
         <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-white/60">Your festive plate</p>
         <PlatePreview values={values} />
-        <p className="mt-3 text-center text-sm text-white/70">
-          {COURSES.map((c) => (values[c.id] ? choiceLabel(c.id, values[c.id]) : `pick a ${c.singular}`)).join(' · ')}
-        </p>
+        <p className="mt-3 text-center text-sm text-white/70">{plateSummary(values)}</p>
       </div>
 
       <button type="submit" className="btn-primary w-full py-4 text-lg" disabled={busy}>
         <span className="candy-stripes absolute inset-0 opacity-30" />
-        <span className="relative">
-          {busy ? 'Wrapping it up…' : editing ? 'Save changes ✨' : 'Send my order to Santa 🎅'}
+        <span className="relative inline-flex items-center gap-2">
+          {busy ? <Spinner /> : editing ? <Save className="h-5 w-5" aria-hidden="true" /> : <Send className="h-5 w-5" aria-hidden="true" />}
+          {busy ? 'Wrapping it up…' : editing ? 'Save changes' : 'Send my order to Santa'}
         </span>
       </button>
     </motion.form>

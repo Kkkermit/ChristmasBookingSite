@@ -1,3 +1,4 @@
+import { Snowflake } from 'lucide-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
 import { Dashboard } from './components/Dashboard';
@@ -6,7 +7,9 @@ import { Forest } from './components/decor/Forest';
 import { HangingOrnaments } from './components/decor/HangingOrnaments';
 import { Sleigh } from './components/decor/Sleigh';
 import { Snowfall } from './components/decor/Snowfall';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginScreen } from './components/LoginScreen';
+import { OfflineBanner } from './components/states';
 import { ToastProvider } from './components/Toasts';
 import { api } from './lib/api';
 
@@ -37,23 +40,26 @@ export default function App() {
           <Snowfall />
           <HangingOrnaments />
           <Sleigh />
+          <OfflineBanner />
+          <ErrorBoundary>
           <AnimatePresence mode="wait">
             {auth === 'checking' && (
               <motion.div
                 key="checking"
-                className="relative z-10 flex min-h-dvh items-center justify-center text-6xl"
+                className="relative z-10 flex min-h-dvh items-center justify-center text-ice-300"
                 exit={{ opacity: 0 }}
                 role="status"
                 aria-label="Loading"
               >
-                <motion.span animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}>
-                  ❄️
+                <motion.span animate={{ rotate: 360 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}>
+                  <Snowflake className="h-14 w-14" aria-hidden="true" />
                 </motion.span>
               </motion.div>
             )}
             {auth === 'signed-out' && <LoginScreen key="login" onSuccess={signedIn} />}
             {auth === 'signed-in' && <Dashboard key="dashboard" onLoggedOut={signedOut} />}
           </AnimatePresence>
+          </ErrorBoundary>
           <Forest />
         </div>
       </ToastProvider>

@@ -1,9 +1,15 @@
+import { Eye, EyeOff, KeyRound, LockOpen } from 'lucide-react';
 import { motion, useAnimationControls } from 'motion/react';
 import { useState, type FormEvent } from 'react';
 import { ApiError, api } from '../lib/api';
 import { celebrate } from '../lib/celebrate';
 import { ChristmasTree } from './decor/ChristmasTree';
+import { Spinner } from './Spinner';
 
+/**
+ * The only screen strangers can ever see. Deliberately says nothing about
+ * the venue or the event details - those only load after logging in.
+ */
 export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
@@ -59,17 +65,14 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
             <br />
             <span className="text-white">2026</span>
           </h1>
-          <p className="mt-3 text-white/70">
-            Pre-order your festive feast at <span className="font-semibold text-white">Smokehouse &amp; Cellar</span>.
-            Say the magic word to get in.
-          </p>
+          <p className="mt-3 text-white/70">Say the magic word to get in.</p>
 
-          <form onSubmit={submit} className="mt-7 space-y-3 text-left" noValidate>
+          <form onSubmit={submit} className="mt-7 space-y-3 text-left" noValidate aria-busy={busy}>
             <label htmlFor="password" className="block text-sm font-semibold text-white/80">
               Password
             </label>
             <div className="relative">
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg">🔐</span>
+              <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gold-300" aria-hidden="true" />
               <input
                 id="password"
                 name="password"
@@ -78,7 +81,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`field pl-12 pr-20 ${error ? 'field-error' : ''}`}
+                className={`field pl-12 pr-14 ${error ? 'field-error' : ''}`}
                 placeholder="The magic word…"
                 aria-invalid={Boolean(error)}
                 aria-describedby={error ? 'password-error' : undefined}
@@ -86,10 +89,10 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
               <button
                 type="button"
                 onClick={() => setShow((s) => !s)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl px-3 py-1.5 text-xs font-semibold text-white/70 hover:bg-white/10 hover:text-white"
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
                 aria-label={show ? 'Hide password' : 'Show password'}
               >
-                {show ? 'Hide' : 'Show'}
+                {show ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
               </button>
             </div>
             {error && (
@@ -105,7 +108,10 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
             )}
             <button type="submit" className="btn-primary w-full text-lg" disabled={!password || busy}>
               <span className="candy-stripes absolute inset-0 opacity-40" />
-              <span className="relative">{busy ? 'Checking the list…' : 'Unlock the grotto 🔓'}</span>
+              <span className="relative inline-flex items-center gap-2">
+                {busy ? <Spinner /> : <LockOpen className="h-5 w-5" aria-hidden="true" />}
+                {busy ? 'Checking the list…' : 'Unlock the grotto'}
+              </span>
             </button>
           </form>
         </motion.div>

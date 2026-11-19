@@ -7,7 +7,7 @@ import {
   type PDFField,
   type PDFFont,
 } from 'pdf-lib';
-import { COURSES, SKIP } from '../shared/menu.js';
+import { COURSES, SKIP, requirementsText } from '../shared/menu.js';
 import type { BookingDetails, BookingDetailsKey, Order } from '../shared/types.js';
 
 /** Booking-detail key -> text field name in the restaurant's PDF. */
@@ -141,7 +141,7 @@ export async function fillBookingForm(
   for (let row = 1; row <= rows; row++) {
     const order = sorted[row - 1];
     writeText(fields.text(guestNameField(row)), order?.name ?? '', font);
-    writeText(fields.text(guestNotesField(row)), order?.notes ?? '', font);
+    writeText(fields.text(guestNotesField(row)), order ? requirementsText(order) : '', font);
     if (!order) continue;
     for (const course of COURSES) {
       const choice = order[course.id];

@@ -1,3 +1,4 @@
+import { ListChecks, Pencil, Send, UserRound, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import type { Order } from '../../shared/types';
@@ -11,26 +12,18 @@ import { Header } from './Header';
 import { Hero } from './Hero';
 import { NiceList } from './NiceList';
 import { OrderForm } from './OrderForm';
+import { DashboardSkeleton, ErrorState } from './states';
 import { Tally } from './Tally';
 import { useToast } from './Toasts';
 import { Workshop } from './Workshop';
 
-function SetupNeeded({ message }: { message: string }) {
-  return (
-    <div className="glass mx-auto mt-16 max-w-xl p-8 text-center">
-      <div className="text-6xl">🧰</div>
-      <h2 className="mt-3 font-display text-3xl">One more step</h2>
-      <p className="mt-3 text-white/75">{message}</p>
-    </div>
-  );
-}
-
 function HowItWorks({ partySize }: { partySize: number }) {
-  const steps = [
-    { icon: '🎅', text: 'Pop your name in' },
-    { icon: '🍽️', text: 'Pick a starter, main and dessert' },
-    { icon: '✨', text: 'Edit or delete any time before the deadline' },
-    { icon: '🧾', text: `Once all ${partySize} are in, download the filled booking form` },
+  const steps: Array<{ Icon: LucideIcon; text: string }> = [
+    { Icon: UserRound, text: 'Pop your name in' },
+    { Icon: UtensilsCrossed, text: 'Pick a starter, main and dessert' },
+    { Icon: Send, text: 'Send it to Santa - it appears on the Nice List' },
+    { Icon: Pencil, text: 'Edit or delete any time before the deadline' },
+    { Icon: ListChecks, text: `Once all ${partySize} are in, download the filled booking form` },
   ];
   return (
     <div className="glass p-6">
@@ -44,7 +37,9 @@ function HowItWorks({ partySize }: { partySize: number }) {
             transition={{ delay: 0.3 + i * 0.12 }}
             className="flex items-center gap-3"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-xl">{step.icon}</span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-gold-300">
+              <step.Icon className="h-5 w-5" aria-hidden="true" />
+            </span>
             <span className="text-white/80">{step.text}</span>
           </motion.li>
         ))}
@@ -53,23 +48,8 @@ function HowItWorks({ partySize }: { partySize: number }) {
   );
 }
 
-function Loading() {
-  return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4" role="status">
-      <motion.div
-        className="text-6xl"
-        animate={{ rotate: [0, 15, -15, 0], y: [0, -12, 0] }}
-        transition={{ duration: 1.2, repeat: Infinity }}
-      >
-        🎁
-      </motion.div>
-      <p className="font-semibold text-white/70">Unwrapping the orders…</p>
-    </div>
-  );
-}
-
 export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
-  const { state, error, reload, upsertOrder, removeOrder, setDetails } = useBookingData(onLoggedOut);
+  const { state, error, refreshing, refreshFailed, reload, upsertOrder, removeOrder, setDetails } = useBookingData(onLoggedOut);
   const [editing, setEditing] = useState<Order | null>(null);
   const [toDelete, setToDelete] = useState<Order | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -102,14 +82,14 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
         const total = (state?.orders.length ?? 0) + 1;
         if (state && total === state.config.partySize) {
           bigCelebration();
-          toast.show(`That's everyone! All ${total} orders are in - time to download the booking form 🎉`, 'success');
+          toast.show(`That's everyone! All ${total} orders are in - time to download the booking form`, 'success');
         } else {
           celebrate();
-          toast.show(`Ho ho ho! ${order.name}'s order is on the Nice List 🎄`, 'success');
+          toast.show(`Ho ho ho! ${order.name}'s order is on the Nice List`, 'success');
         }
       } else {
         celebrate({ x: 0.5, y: 0.4 });
-        toast.show(`${order.name}'s order has been updated ✨`, 'success');
+        toast.show(`${order.name}'s order has been updated`, 'success');
       }
     },
     [state, toast, upsertOrder],
@@ -148,26 +128,19 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10">
       <Header onLogout={logout} loggingOut={loggingOut} />
       <main className="mx-auto max-w-6xl px-4 pb-72 sm:pb-80">
-        {!state && error?.code === 'NO_STORAGE' && <SetupNeeded message={error.message} />}
-        {!state && error && error.code !== 'NO_STORAGE' && (
-          <div className="glass mx-auto mt-16 max-w-xl p-8 text-center">
-            <div className="text-6xl">🥶</div>
-            <p className="mt-3 text-white/80">{error.message}</p>
-            <button type="button" className="btn-primary mt-5" onClick={() => void reload()}>
-              Try again
-            </button>
-          </div>
-        )}
-        {!state && !error && <Loading />}
+        {!state && error && <ErrorState error={error} onRetry={() => void reload()} retrying={refreshing} />}
+        {!state && !error && <DashboardSkeleton />}
         {state && (
           <>
             <Hero config={state.config} orders={state.orders} now={now} />
 
             <div className="mt-14 grid gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start">
               <div id="order" ref={formRef} className="scroll-mt-24">
-                <h2 className="section-title mb-4">
-                  {editing ? 'Change of heart?' : 'Place your order'}{' '}
-                  <span className="inline-block animate-float">🍽️</span>
+                <h2 className="section-title mb-4 flex items-center gap-3">
+                  {editing ? 'Change of heart?' : 'Place your order'}
+                  <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
+                    <UtensilsCrossed className="h-6 w-6" aria-hidden="true" />
+                  </span>
                 </h2>
                 <OrderForm
                   config={state.config}
@@ -191,6 +164,9 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
                 highlightId={highlightId}
                 onEdit={startEdit}
                 onDelete={setToDelete}
+                refreshing={refreshing}
+                refreshFailed={refreshFailed}
+                onRefresh={() => void reload()}
               />
               <div className="mt-6 lg:hidden">
                 <Tally orders={state.orders} />

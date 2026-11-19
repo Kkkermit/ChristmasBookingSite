@@ -1,4 +1,6 @@
+import { CalendarClock, Lock, MapPin, PoundSterling } from 'lucide-react';
 import { motion } from 'motion/react';
+import { PRICE_PER_HEAD, RESTAURANT, formatPrice } from '../../shared/menu';
 import type { Order, PublicConfig } from '../../shared/types';
 import { formatLongDate, sleepsUntilChristmas } from '../lib/format';
 import { BaubleGarland } from './BaubleGarland';
@@ -19,11 +21,17 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
         animate={{ opacity: 1, y: 0 }}
         className="inline-flex flex-wrap items-center justify-center gap-2"
       >
-        <span className="rounded-full border border-gold-300/40 bg-gold-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-gold-300">
-          {config.restaurantName}
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-gold-300/40 bg-gold-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-gold-300">
+          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+          {RESTAURANT.name}, {RESTAURANT.location}
         </span>
-        <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white/80">
-          {sleeps === 0 ? "It's Christmas! 🎅" : `${sleeps} sleep${sleeps === 1 ? '' : 's'} till Christmas`}
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-white/80">
+          <PoundSterling className="h-3.5 w-3.5" aria-hidden="true" />
+          {formatPrice(PRICE_PER_HEAD)} pp + 10% service
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.15em] text-white/80">
+          <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
+          {sleeps === 0 ? "It's Christmas!" : `${sleeps} sleep${sleeps === 1 ? '' : 's'} till Christmas`}
         </span>
       </motion.div>
 
@@ -55,7 +63,7 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6 }}
       >
-        Pick a starter, main and dessert below. Change your mind? Edit or delete your order any time before the deadline.
+        Pick your starter, main and dessert from the Christmas menu below. Change your mind? Edit or delete your order any time before the deadline.
       </motion.p>
 
       <motion.div
@@ -71,9 +79,9 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
           {config.ordersOpen ? (
             <Countdown deadline={new Date(config.deadline)} now={now} />
           ) : (
-            <div className="text-5xl" aria-hidden="true">
-              🔒
-            </div>
+            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-gold-300">
+              <Lock className="h-8 w-8" aria-hidden="true" />
+            </span>
           )}
           <p className="mt-3 text-sm text-white/60">Deadline: {formatLongDate(config.deadline)}</p>
         </div>
@@ -85,7 +93,7 @@ export function Hero({ config, orders, now }: { config: PublicConfig; orders: Or
               <span className="text-white/70"> / {config.partySize} elves have ordered</span>
             </p>
             <p className="text-sm font-semibold text-white/60">
-              {complete ? 'Everyone’s in! 🎉' : `${remaining} to go`}
+              {complete ? 'Everyone’s in!' : `${remaining} to go`}
             </p>
           </div>
           <BaubleGarland orders={orders} partySize={config.partySize} />

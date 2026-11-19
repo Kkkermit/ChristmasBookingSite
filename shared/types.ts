@@ -1,8 +1,13 @@
 export interface OrderInput {
   name: string;
   starter: string;
+  /** Option for the chosen dish (e.g. gluten-free soup) - '' when the dish has none. */
+  starterOption: string;
   main: string;
+  mainOption: string;
   dessert: string;
+  /** e.g. 'cream' or 'ice_cream' for the fudge cake. */
+  dessertOption: string;
   /** Allergies / special requirements (maps to the last column of the booking form). */
   notes: string;
 }

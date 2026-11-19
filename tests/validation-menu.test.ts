@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { COURSES, SKIP, choiceLabel, findDish, isValidChoice } from '../shared/menu.js';
+import {
+  COURSES,
+  SKIP,
+  choiceLabel,
+  estimatedBill,
+  findDish,
+  isValidChoice,
+  optionLabel,
+  requirementsText,
+} from '../shared/menu.js';
 import { LIMITS, cleanText, isPdfSafe, nameKey, validateDetails, validateOrderInput } from '../shared/validation.js';
 
 describe('menu', () => {
@@ -19,7 +28,10 @@ describe('menu', () => {
   it('labels choices', () => {
     expect(choiceLabel('main', 'seabass')).toBe('Seabass');
     expect(choiceLabel('starter', SKIP)).toBe('No starter');
-    expect(findDish('dessert', 'trillionaires_tart')?.name).toBe("Trillionaire's Tart");
+    expect(findDish('dessert', 'trillionaires_tart')?.name).toBe('Trillionaires Tart');
+    expect(findDish('main', 'wellington')?.name).toBe('Beetroot & Butternut Squash Wellington');
+    expect(optionLabel('dessert', 'chocolate_fudge_cake', 'ice_cream')).toBe('Ice cream');
+    expect(optionLabel('main', 'seabass', 'anything')).toBe('');
   });
 
   it('only lets starters and desserts be skipped', () => {
@@ -31,12 +43,65 @@ describe('menu', () => {
   });
 });
 
+describe('menu details from the restaurant PDF', () => {
+  it('marks the vegan and gluten-free dishes', () => {
+    expect(findDish('main', 'wellington')?.dietary).toEqual(['vegan']);
+    expect(findDish('dessert', 'trillionaires_tart')?.dietary).toEqual(['vegan', 'gf']);
+    expect(findDish('starter', 'smoked_chicken_wings')?.dietary).toEqual(['gf']);
+    expect(findDish('starter', 'butternut_squash_soup')?.dietary).toEqual(['vegan', 'gf-option']);
+  });
+
+  it('gives every dish a description', () => {
+    for (const course of COURSES) for (const dish of course.dishes) expect(dish.description.length).toBeGreaterThan(20);
+  });
+
+  it('builds the special-requirements text from options and notes', () => {
+    const base = { starter: SKIP, main: 'seabass', dessert: SKIP, notes: '' };
+    expect(requirementsText(base)).toBe('');
+    expect(requirementsText({ ...base, notes: 'Coeliac' })).toBe('Coeliac');
+    expect(
+      requirementsText({
+        ...base,
+        starter: 'butternut_squash_soup',
+        starterOption: 'gluten_free',
+        dessert: 'chocolate_fudge_cake',
+        dessertOption: 'cream',
+        notes: 'No nuts',
+      }),
+    ).toBe('GF soup; Fudge cake w/ cream; No nuts');
+  });
+
+  it('estimates the bill at £39.95 a head plus 10% service', () => {
+    expect(estimatedBill(12)).toEqual({ food: 479.4, service: 47.94, total: 527.34 });
+    expect(estimatedBill(0)).toEqual({ food: 0, service: 0, total: 0 });
+  });
+});
+
 describe('validateOrderInput', () => {
-  const valid = { name: 'Josh', starter: 'shrimp_cocktail', main: 'seabass', dessert: SKIP, notes: '' };
+  const valid = {
+    name: 'Josh',
+    starter: 'shrimp_cocktail',
+    starterOption: '',
+    main: 'seabass',
+    mainOption: '',
+    dessert: SKIP,
+    dessertOption: '',
+    notes: '',
+  };
 
   it('accepts a valid order and tidies whitespace', () => {
     const result = validateOrderInput({ ...valid, name: '  Mary   Christmas\n', notes: ' no\tnuts ' });
     expect(result).toEqual({ ok: true, value: { ...valid, name: 'Mary Christmas', notes: 'no nuts' } });
+  });
+
+  it('handles dish options', () => {
+    const fudge = { ...valid, dessert: 'chocolate_fudge_cake' };
+    const missing = validateOrderInput(fudge);
+    expect(missing.ok).toBe(false);
+    if (!missing.ok) expect(missing.errors).toEqual({ dessertOption: 'Please choose cream or ice cream' });
+    expect(validateOrderInput({ ...fudge, dessertOption: 'cream' }).ok).toBe(true);
+    const soup = validateOrderInput({ ...valid, starter: 'butternut_squash_soup' });
+    expect(soup.ok && soup.value.starterOption).toBe('standard');
   });
 
   it('requires a name and all three choices', () => {

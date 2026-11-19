@@ -1,7 +1,10 @@
+import { Ban, CloudOff, Pencil, RefreshCw, ScrollText, Trash2, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { COURSES, choiceEmoji, choiceLabel } from '../../shared/menu';
+import { COURSES, SKIP, choiceLabel, findDish, optionField } from '../../shared/menu';
 import type { Order } from '../../shared/types';
 import { colourFor, initials } from '../lib/format';
+import { DishIcon } from './icons';
+import { EmptyState } from './states';
 
 interface NiceListProps {
   orders: Order[];
@@ -11,6 +14,9 @@ interface NiceListProps {
   highlightId: string | null;
   onEdit(order: Order): void;
   onDelete(order: Order): void;
+  refreshing?: boolean;
+  refreshFailed?: boolean;
+  onRefresh?(): void;
 }
 
 function OrderCard({
@@ -46,15 +52,13 @@ function OrderCard({
       }}
       exit={{ opacity: 0, x: 80, rotate: 8, scale: 0.8, transition: { duration: 0.3 } }}
       transition={{ type: 'spring', stiffness: 220, damping: 20, boxShadow: { duration: 1.6 } }}
-      className={`relative overflow-hidden rounded-3xl border bg-night-800/70 p-4 backdrop-blur-md ${
+      className={`relative flex flex-col overflow-hidden rounded-3xl border bg-night-800/70 p-4 backdrop-blur-md ${
         isEditing ? 'border-gold-400' : 'border-white/10'
       }`}
     >
-      {/* gift-tag ribbon */}
       <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: colour }} aria-hidden="true" />
       <div className="flex items-start gap-3 pl-1">
-        <motion.span
-          whileHover={{ rotate: [0, -10, 10, 0] }}
+        <span
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white"
           style={{
             background: `radial-gradient(circle at 32% 28%, #ffffffcc 0%, ${colour} 30%, ${colour} 65%, #00000088 140%)`,
@@ -63,7 +67,7 @@ function OrderCard({
           aria-hidden="true"
         >
           {initials(order.name)}
-        </motion.span>
+        </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-lg font-bold">{order.name}</h3>
@@ -73,28 +77,42 @@ function OrderCard({
               </span>
             )}
           </div>
-          <ul className="mt-2 space-y-1 text-sm">
-            {COURSES.map((course) => (
-              <li key={course.id} className="flex items-center gap-2">
-                <span aria-hidden="true" className="w-6 text-center text-base">
-                  {choiceEmoji(course.id, order[course.id])}
-                </span>
-                <span className="sr-only">{course.singular}: </span>
-                <span className={order[course.id] === 'none' ? 'text-white/50 italic' : 'text-white/90'}>
-                  {choiceLabel(course.id, order[course.id])}
-                </span>
-              </li>
-            ))}
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {COURSES.map((course) => {
+              const value = order[course.id];
+              const dish = findDish(course.id, value);
+              const choice = dish?.options?.choices.find((c) => c.id === order[optionField(course.id)]);
+              const option = choice?.formNote ? choice.label : '';
+              return (
+                <li key={course.id} className="flex items-start gap-2">
+                  <span aria-hidden="true" className="mt-0.5 text-gold-300">
+                    {dish ? <DishIcon icon={dish.icon} className="h-4 w-4" /> : <Ban className="h-4 w-4 text-white/40" />}
+                  </span>
+                  <span className="sr-only">{course.singular}: </span>
+                  <span className={value === SKIP ? 'italic text-white/50' : 'text-white/90'}>
+                    {choiceLabel(course.id, value)}
+                    {option && <span className="text-white/55"> · {option.toLowerCase()}</span>}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           {order.notes && (
-            <p className="mt-2 rounded-xl bg-gold-400/10 px-3 py-1.5 text-xs font-medium text-gold-300">⚠️ {order.notes}</p>
+            <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-gold-400/10 px-3 py-1.5 text-xs font-medium text-gold-300">
+              <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="sr-only">Allergies or requests: </span>
+                {order.notes}
+              </span>
+            </p>
           )}
         </div>
       </div>
       {canEdit && (
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
           <button type="button" onClick={onEdit} className="btn-ghost min-h-10 py-2 text-sm" aria-label={`Edit ${order.name}'s order`}>
-            ✏️ Edit
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            Edit
           </button>
           <button
             type="button"
@@ -102,7 +120,8 @@ function OrderCard({
             className="btn min-h-10 border border-holly-400/30 bg-holly-500/10 py-2 text-sm text-holly-400 hover:bg-holly-500/20"
             aria-label={`Delete ${order.name}'s order`}
           >
-            🗑️ Delete
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete
           </button>
         </div>
       )}
@@ -110,21 +129,59 @@ function OrderCard({
   );
 }
 
-export function NiceList({ orders, mine, canEdit, editingId, highlightId, onEdit, onDelete }: NiceListProps) {
+export function NiceList({
+  orders,
+  mine,
+  canEdit,
+  editingId,
+  highlightId,
+  onEdit,
+  onDelete,
+  refreshing,
+  refreshFailed,
+  onRefresh,
+}: NiceListProps) {
   return (
     <section aria-labelledby="nice-list-title">
-      <div className="mb-4 flex items-end justify-between gap-3">
-        <h2 id="nice-list-title" className="section-title">
-          The Nice List <span className="inline-block animate-float">📜</span>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <h2 id="nice-list-title" className="section-title flex items-center gap-3">
+          The Nice List
+          <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
+            <ScrollText className="h-6 w-6" aria-hidden="true" />
+          </span>
         </h2>
-        <span className="pb-1 text-sm font-semibold text-white/60">{orders.length} ordered</span>
+        <div className="flex items-center gap-3 pb-1">
+          <span className="text-sm font-semibold text-white/60">{orders.length} ordered</span>
+          {onRefresh && (
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+              aria-label="Refresh the list"
+              title="Refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
+      <AnimatePresence>
+        {refreshFailed && (
+          <motion.p
+            role="status"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 flex items-center gap-2 overflow-hidden rounded-2xl border border-gold-400/30 bg-gold-400/10 px-4 py-2 text-sm text-gold-300"
+          >
+            <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+            Couldn&apos;t refresh just now - showing the last list we loaded. We&apos;ll keep trying.
+          </motion.p>
+        )}
+      </AnimatePresence>
       {orders.length === 0 ? (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-8 text-center">
-          <div className="inline-block animate-float text-6xl">🎁</div>
-          <p className="mt-3 text-lg font-semibold">No orders yet</p>
-          <p className="text-white/60">Be the first elf to order!</p>
-        </motion.div>
+        <EmptyState title="No orders yet">Be the first elf to order - your bauble will light up at the top!</EmptyState>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           <AnimatePresence initial={false}>

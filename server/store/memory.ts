@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { BookingDetails, Order } from '../../shared/types.js';
-import type { Store } from './types.js';
+import { normaliseOrder, type Store } from './types.js';
 
 interface Snapshot {
   orders: Record<string, Order>;
@@ -36,12 +36,12 @@ export class MemoryStore implements Store {
   }
 
   async listOrders() {
-    return Object.values(this.data.orders).map((o) => ({ ...o }));
+    return Object.values(this.data.orders).map((o) => normaliseOrder({ ...o }));
   }
 
   async getOrder(id: string) {
     const order = this.data.orders[id];
-    return order ? { ...order } : null;
+    return order ? normaliseOrder({ ...order }) : null;
   }
 
   async saveOrder(order: Order) {

@@ -1,9 +1,12 @@
+import { BookOpen, Check, Download, Eye, FileText, Info, NotebookPen, Save, Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useId, useState, type FormEvent } from 'react';
+import { MENU_PDF_FILENAME, MENU_PDF_PATH, PRICE_PER_HEAD, formatPrice } from '../../shared/menu';
 import type { BookingDetails, Order, PublicConfig } from '../../shared/types';
 import { DETAIL_FIELDS, LIMITS, validateDetails } from '../../shared/validation';
-import { ApiError, BOOKING_FORM_PREVIEW_URL, BOOKING_FORM_URL, MENU_URL, api, downloadFile } from '../lib/api';
+import { ApiError, BOOKING_FORM_PREVIEW_URL, BOOKING_FORM_URL, api, downloadFile } from '../lib/api';
 import { bigCelebration } from '../lib/celebrate';
+import { Spinner } from './icons';
 import { useToast } from './Toasts';
 
 /** A tiny paper booking form that fills in as people order. */
@@ -25,10 +28,10 @@ function PaperForm({ orders, rows }: { orders: Order[]; rows: number }) {
             <div key={i} className="flex h-2.5 items-center gap-1 border-b border-slate-200">
               <span className="w-14 truncate text-[0.4rem] font-semibold">{order?.name ?? ''}</span>
               {Array.from({ length: 3 }, (_, j) => (
-                <span key={j} className="flex h-1.5 w-1.5 items-center justify-center border border-slate-300 text-[0.35rem] leading-none">
+                <span key={j} className="flex h-1.5 w-1.5 items-center justify-center border border-slate-300">
                   {order ? (
-                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1 * j }} className="text-pine-700">
-                      ✓
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1 * j }}>
+                      <Check className="h-1.5 w-1.5 text-pine-700" strokeWidth={4} />
                     </motion.span>
                   ) : null}
                 </span>
@@ -74,7 +77,7 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-3 sm:grid-cols-2">
+    <form onSubmit={submit} noValidate aria-busy={busy} className="grid gap-3 sm:grid-cols-2">
       {DETAIL_FIELDS.map((field) => (
         <div key={field.key}>
           <label htmlFor={`${idPrefix}-${field.key}`} className="mb-1 block text-xs font-bold uppercase tracking-wider text-white/60">
@@ -99,7 +102,8 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
       ))}
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <button type="submit" className="btn-gold" disabled={busy || !dirty}>
-          {busy ? 'Saving…' : dirty ? 'Save details' : 'Saved ✓'}
+          {busy ? <Spinner /> : dirty ? <Save className="h-5 w-5" aria-hidden="true" /> : <Check className="h-5 w-5" aria-hidden="true" />}
+          <span className="relative">{busy ? 'Saving…' : dirty ? 'Save details' : 'Saved'}</span>
         </button>
         <p className="text-xs text-white/50">Total guests is filled in automatically.</p>
       </div>
@@ -125,7 +129,12 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
     try {
       await downloadFile(BOOKING_FORM_URL, 'Christmas-Booking-Form-2026.pdf');
       if (complete) bigCelebration();
-      toast.show(`Booking form ready with ${orders.length} guest${orders.length === 1 ? '' : 's'} 🎄`, 'success');
+      toast.show(
+        orders.length
+          ? `Booking form ready with ${orders.length} guest${orders.length === 1 ? '' : 's'}`
+          : 'Downloaded a blank booking form - nobody has ordered yet',
+        'success',
+      );
     } catch (err) {
       toast.show(err instanceof ApiError ? err.message : 'Could not build the form - please try again.', 'error');
     } finally {
@@ -136,8 +145,11 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
   return (
     <section id="workshop" aria-labelledby="workshop-title" className="scroll-mt-24">
       <div className="mb-5 text-center">
-        <h2 id="workshop-title" className="section-title">
-          Santa&apos;s Workshop <span className="inline-block animate-float">🛠️</span>
+        <h2 id="workshop-title" className="section-title inline-flex items-center gap-3">
+          Santa&apos;s Workshop
+          <span className="inline-flex h-10 w-10 animate-float items-center justify-center rounded-2xl bg-gold-400/15 text-gold-300">
+            <Wrench className="h-6 w-6" aria-hidden="true" />
+          </span>
         </h2>
         <p className="mt-1 text-white/65">Everyone can grab the menu and generate the finished booking form.</p>
       </div>
@@ -146,17 +158,26 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
         <div className="grid gap-5">
           <motion.div whileHover={{ y: -4 }} className="glass p-6">
             <div className="flex items-center gap-4">
-              <span className="inline-block animate-sway text-5xl" aria-hidden="true">
-                📖
+              <span className="flex h-14 w-14 shrink-0 animate-sway items-center justify-center rounded-2xl bg-holly-500/20 text-holly-400">
+                <BookOpen className="h-7 w-7" aria-hidden="true" />
               </span>
               <div>
                 <h3 className="font-display text-2xl">The menu</h3>
-                <p className="text-sm text-white/65">The full Smokehouse &amp; Cellar Christmas menu, with every dish described.</p>
+                <p className="text-sm text-white/65">
+                  Christmas at the Smokehouse · {formatPrice(PRICE_PER_HEAD)} per person + 10% service.
+                </p>
               </div>
             </div>
-            <a href={MENU_URL} target="_blank" rel="noopener" className="btn-ghost mt-4 w-full sm:w-auto">
-              ⬇️ Download menu
-            </a>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <a href={MENU_PDF_PATH} download={MENU_PDF_FILENAME} className="btn-ghost">
+                <Download className="h-5 w-5" aria-hidden="true" />
+                Download menu
+              </a>
+              <a href={MENU_PDF_PATH} target="_blank" rel="noopener" className="btn-ghost">
+                <Eye className="h-5 w-5" aria-hidden="true" />
+                View
+              </a>
+            </div>
           </motion.div>
 
           <motion.div
@@ -167,28 +188,50 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
             <div className="grid items-center gap-6 sm:grid-cols-[auto_1fr] lg:grid-cols-1 xl:grid-cols-[auto_1fr]">
               <PaperForm orders={orders} rows={Math.max(config.partySize, Math.min(orders.length, config.maxGuests))} />
               <div>
-                <h3 className="font-display text-2xl">Completed booking form</h3>
+                <h3 className="flex items-center gap-2 font-display text-2xl">
+                  <FileText className="h-6 w-6 text-gold-300" aria-hidden="true" />
+                  Completed booking form
+                </h3>
                 <p className="mt-1 text-sm text-white/70">
                   {complete
-                    ? 'Everyone has ordered! The restaurant’s form is filled in and ready to send. 🎉'
-                    : `Builds the restaurant’s PDF with everyone’s choices ticked. ${missing} still to order - you can generate it any time, it just won’t be complete yet.`}
+                    ? 'Everyone has ordered! The restaurant’s form is filled in and ready to send.'
+                    : orders.length === 0
+                      ? 'Nobody has ordered yet - the form will be blank until the first order comes in.'
+                      : `Builds the restaurant’s PDF with everyone’s choices ticked. ${missing} still to order - you can generate it any time, it just won’t be complete yet.`}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button type="button" onClick={downloadForm} disabled={downloading} className={complete ? 'btn-gold' : 'btn-primary'}>
+                  <button
+                    type="button"
+                    onClick={downloadForm}
+                    disabled={downloading}
+                    aria-busy={downloading}
+                    className={complete ? 'btn-gold' : 'btn-primary'}
+                  >
                     {!complete && <span className="candy-stripes absolute inset-0 opacity-30" />}
-                    <span className="relative whitespace-nowrap">{downloading ? 'Elves writing…' : '🧾 Download booking form'}</span>
+                    <span className="relative inline-flex items-center gap-2 whitespace-nowrap">
+                      {downloading ? <Spinner /> : <Download className="h-5 w-5" aria-hidden="true" />}
+                      {downloading ? 'Elves writing…' : 'Download booking form'}
+                    </span>
                   </button>
                   <a href={BOOKING_FORM_PREVIEW_URL} target="_blank" rel="noopener" className="btn-ghost">
-                    👀 Preview
+                    <Eye className="h-5 w-5" aria-hidden="true" />
+                    Preview
                   </a>
                 </div>
+                <p className="mt-3 flex items-start gap-1.5 text-xs text-white/50">
+                  <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  The menu asks for choices at least 2 weeks before the booking date.
+                </p>
               </div>
             </div>
           </motion.div>
         </div>
 
         <div className="glass p-6">
-          <h3 className="font-display text-2xl">Booking details ✍️</h3>
+          <h3 className="flex items-center gap-2 font-display text-2xl">
+            <NotebookPen className="h-6 w-6 text-gold-300" aria-hidden="true" />
+            Booking details
+          </h3>
           <p className="mb-4 mt-1 text-sm text-white/65">
             The top section of the restaurant’s form. Fill in once - anyone can update it.
           </p>

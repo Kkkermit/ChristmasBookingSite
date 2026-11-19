@@ -16,8 +16,29 @@ import { template } from './helpers.js';
 
 const ROWS = 18;
 
-function order(name: string, starter: string, main: string, dessert: string, notes = '', createdAt = '2026-11-20T10:00:00Z'): Order {
-  return { id: name, name, starter, main, dessert, notes, createdAt, updatedAt: createdAt };
+function order(
+  name: string,
+  starter: string,
+  main: string,
+  dessert: string,
+  notes = '',
+  createdAt = '2026-11-20T10:00:00Z',
+  options: Partial<Pick<Order, 'starterOption' | 'mainOption' | 'dessertOption'>> = {},
+): Order {
+  return {
+    id: name,
+    name,
+    starter,
+    starterOption: '',
+    main,
+    mainOption: '',
+    dessert,
+    dessertOption: '',
+    notes,
+    createdAt,
+    updatedAt: createdAt,
+    ...options,
+  };
 }
 
 async function readForm(bytes: Uint8Array) {
@@ -102,6 +123,24 @@ describe('fillBookingForm', () => {
 
     // 3 + 3 + 1 + 3 ticks in total, nothing else.
     expect(allChecked()).toHaveLength(10);
+  });
+
+  it('writes dish options into the special requirements column, before any allergy notes', async () => {
+    const orders = [
+      order('Amelia', 'butternut_squash_soup', 'seabass', 'chocolate_fudge_cake', 'Nut allergy', undefined, {
+        starterOption: 'gluten_free',
+        dessertOption: 'ice_cream',
+      }),
+      order('Ben', 'butternut_squash_soup', 'seabass', 'chocolate_fudge_cake', '', undefined, {
+        starterOption: 'standard',
+        dessertOption: 'cream',
+      }),
+    ];
+    const { text, checked } = await readForm((await fillBookingForm(template, orders, details)).bytes);
+    expect(text(guestNotesField(1))).toBe('GF soup; Fudge cake w/ ice cream; Nut allergy');
+    expect(text(guestNotesField(2))).toBe('Fudge cake w/ cream');
+    expect(checked(dishField(1, 'starter', 'butternut_squash_soup'))).toBe(true);
+    expect(checked(dishField(1, 'dessert', 'chocolate_fudge_cake'))).toBe(true);
   });
 
   it('fills the header section and the total guest count', async () => {

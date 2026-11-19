@@ -1,4 +1,4 @@
-import { COURSES, isValidChoice } from './menu.js';
+import { COURSES, findDish, isValidChoice, optionField } from './menu.js';
 import type { BookingDetails, BookingDetailsKey, OrderInput } from './types.js';
 
 export const LIMITS = {
@@ -75,6 +75,19 @@ export function validateOrderInput(raw: unknown): ValidationResult<OrderInput> {
       errors[course.id] = `That ${course.singular} isn't on the menu`;
     }
     choices[course.id] = value;
+
+    // Dish options (e.g. gluten-free soup, fudge cake with cream or ice cream)
+    // are chosen from a fixed list; anything sent for a dish without options is ignored.
+    const field = optionField(course.id);
+    const rawOption = typeof input[field] === 'string' ? (input[field] as string) : '';
+    const options = findDish(course.id, value)?.options;
+    let option = '';
+    if (options) {
+      option = rawOption || options.defaultChoice || '';
+      if (!option) errors[field] = `Please choose ${options.choices.map((c) => c.label.toLowerCase()).join(' or ')}`;
+      else if (!options.choices.some((c) => c.id === option)) errors[field] = "That option isn't available";
+    }
+    choices[field] = option;
   }
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
@@ -83,8 +96,11 @@ export function validateOrderInput(raw: unknown): ValidationResult<OrderInput> {
     value: {
       name,
       starter: choices.starter,
+      starterOption: choices.starterOption,
       main: choices.main,
+      mainOption: choices.mainOption,
       dessert: choices.dessert,
+      dessertOption: choices.dessertOption,
       notes,
     },
   };

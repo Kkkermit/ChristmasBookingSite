@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/check-public-assets.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
@@ -18,14 +18,19 @@
   },
   "dependencies": {
     "@upstash/redis": "^1.41.0",
+    "@vercel/functions": "^3.11.3",
     "canvas-confetti": "^1.9.4",
+    "lucide-react": "^1.76.0",
     "motion": "^14.14.0",
     "pdf-lib": "^1.17.1",
+    "postgres": "^4.1.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "redis": "^6.3.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
+    "@electric-sql/pglite-socket": "^0.2.20",
     "@tailwindcss/vite": "^4.3.5",
     "@testing-library/jest-dom": "^8.0.0",
     "@testing-library/react": "^16.3.3",

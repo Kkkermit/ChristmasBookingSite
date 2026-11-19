@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { resolve } from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
@@ -58,6 +59,21 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), devApi()],
   build: {
     target: 'es2022',
+    rolldownOptions: {
+      // Two pages: the public login page and the private app. The fixed
+      // prefixes let middleware.ts serve login-* and shared-* files to anyone,
+      // while app-* (menu, orders UI) is only served after logging in.
+      // scripts/check-public-assets.mjs verifies nothing private leaks.
+      input: {
+        app: resolve(import.meta.dirname, 'index.html'),
+        login: resolve(import.meta.dirname, 'login.html'),
+      },
+      output: {
+        entryFileNames: (chunk) => (chunk.name === 'login' ? 'assets/login-[hash].js' : 'assets/app-[hash].js'),
+        chunkFileNames: 'assets/shared-[hash].js',
+        assetFileNames: 'assets/shared-[hash][extname]',
+      },
+    },
   },
   test: {
     projects: [

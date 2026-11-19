@@ -1,4 +1,6 @@
+import { Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { Spinner } from './Spinner';
 import { useEffect, useRef } from 'react';
 
 interface ConfirmDialogProps {
@@ -46,7 +48,9 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
             transition={{ type: 'spring', stiffness: 320, damping: 24 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-2 text-5xl">🥺</div>
+            <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-holly-500/20 text-holly-400">
+              <Trash2 className="h-7 w-7" aria-hidden="true" />
+            </span>
             <h2 id="confirm-title" className="font-display text-2xl">
               {title}
             </h2>
@@ -58,6 +62,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
                 Keep it
               </button>
               <button type="button" className="btn-primary" onClick={onConfirm} disabled={busy}>
+                {busy && <Spinner className="h-4 w-4" />}
                 {busy ? 'Removing…' : confirmLabel}
               </button>
             </div>

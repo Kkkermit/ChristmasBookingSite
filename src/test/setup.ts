@@ -36,3 +36,5 @@ Element.prototype.scrollIntoView ??= function scrollIntoView() {};
 
 // jsdom has no canvas; the snowfall/confetti code checks for a null context.
 HTMLCanvasElement.prototype.getContext = (() => null) as unknown as HTMLCanvasElement['getContext'];
+
+window.scrollTo = (() => {}) as typeof window.scrollTo;

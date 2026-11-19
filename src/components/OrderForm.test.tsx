@@ -18,6 +18,43 @@ describe('OrderForm', () => {
     expect(screen.queryByRole('radio', { name: /No main/ })).not.toBeInTheDocument();
   });
 
+  it('shows the menu descriptions and dietary labels', () => {
+    renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
+    expect(screen.getByText(/Chunky beetroot & butternut squash in a sweet & sharp balsamic chutney/)).toBeInTheDocument();
+    const wellington = screen.getByRole('radio', { name: /Beetroot & Butternut Squash Wellington/ });
+    expect(wellington.closest('label')).toHaveTextContent('Vegan');
+  });
+
+  it('asks cream or ice cream for the fudge cake and requires an answer', async () => {
+    const calls = mockFetch(() => ({ status: 201, body: { order: order() } }));
+    renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
+    await userEvent.type(screen.getByPlaceholderText('Your name'), 'Ben');
+    await userEvent.click(screen.getByRole('radio', { name: /No starter/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Seabass/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Ultimate Chocolate Fudge Cake/ }));
+    expect(screen.getByRole('radio', { name: 'Ice cream' })).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole('button', { name: /send my order to santa/i }));
+    expect(await screen.findByText('Please choose cream or ice cream')).toBeInTheDocument();
+    expect(calls).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Ice cream' }));
+    await userEvent.click(screen.getByRole('button', { name: /send my order to santa/i }));
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0].body).toMatchObject({ dessert: 'chocolate_fudge_cake', dessertOption: 'ice_cream' });
+  });
+
+  it('pre-selects the standard soup but offers the gluten-free option', async () => {
+    renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Butternut Squash Soup/ }));
+    expect(screen.getByRole('radio', { name: 'Standard' })).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: 'Gluten-free option' }));
+    expect(screen.getByRole('radio', { name: 'Gluten-free option' })).toBeChecked();
+    // Switching dish clears the option.
+    await userEvent.click(screen.getByRole('radio', { name: /Smoked Chicken Wings/ }));
+    await waitFor(() => expect(screen.queryByRole('radio', { name: 'Gluten-free option' })).not.toBeInTheDocument());
+  });
+
   it('highlights everything missing instead of submitting an empty order', async () => {
     const calls = mockFetch(() => undefined);
     renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
@@ -38,8 +75,8 @@ describe('OrderForm', () => {
 
     await userEvent.type(screen.getByPlaceholderText('Your name'), 'Amelia');
     await userEvent.click(screen.getByRole('radio', { name: /No starter/ }));
-    await userEvent.click(screen.getByRole('radio', { name: /Seabass/ }));
-    await userEvent.click(screen.getByRole('radio', { name: /Christmas Pudding/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Seabass/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Xmas Pudding/ }));
     await userEvent.type(screen.getByPlaceholderText(/nut allergy/), 'No nuts');
     await userEvent.click(screen.getByRole('button', { name: /send my order to santa/i }));
 
@@ -47,7 +84,16 @@ describe('OrderForm', () => {
     expect(calls[0]).toEqual({
       url: '/api/orders',
       method: 'POST',
-      body: { name: 'Amelia', starter: 'none', main: 'seabass', dessert: 'christmas_pudding', notes: 'No nuts' },
+      body: {
+        name: 'Amelia',
+        starter: 'none',
+        starterOption: '',
+        main: 'seabass',
+        mainOption: '',
+        dessert: 'christmas_pudding',
+        dessertOption: '',
+        notes: 'No nuts',
+      },
     });
     expect(screen.getByPlaceholderText('Your name')).toHaveValue('');
   });
@@ -59,7 +105,7 @@ describe('OrderForm', () => {
     );
     await userEvent.type(screen.getByPlaceholderText('Your name'), '  JOSH ');
     await userEvent.click(screen.getByRole('radio', { name: /Shrimp Cocktail/ }));
-    await userEvent.click(screen.getByRole('radio', { name: /Seabass/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Seabass/ }));
     await userEvent.click(screen.getByRole('radio', { name: /No dessert/ }));
     await userEvent.click(screen.getByRole('button', { name: /send my order to santa/i }));
 
@@ -74,11 +120,11 @@ describe('OrderForm', () => {
     const onCancel = vi.fn();
     renderWithToasts(<OrderForm config={config()} orders={[existing]} editing={existing} onSaved={onSaved} onCancelEdit={onCancel} />);
 
-    expect(screen.getByText("✏️ Editing Josh's order")).toBeInTheDocument();
+    expect(screen.getByText("Editing Josh's order")).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your name')).toHaveValue('Josh');
     expect(screen.getByRole('radio', { name: /Ultimate Xmas Burger/ })).toBeChecked();
 
-    await userEvent.click(screen.getByRole('radio', { name: /Turkey Dinner/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Smokehouse Turkey Dinner/ }));
     await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith({ ...existing, main: 'turkey_dinner' }, false));
@@ -96,7 +142,7 @@ describe('OrderForm', () => {
     renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
     await userEvent.type(screen.getByPlaceholderText('Your name'), 'Josh');
     await userEvent.click(screen.getByRole('radio', { name: /Shrimp Cocktail/ }));
-    await userEvent.click(screen.getByRole('radio', { name: /Seabass/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Seabass/ }));
     await userEvent.click(screen.getByRole('radio', { name: /No dessert/ }));
     await userEvent.click(screen.getByRole('button', { name: /send my order to santa/i }));
 

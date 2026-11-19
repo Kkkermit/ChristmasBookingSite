@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { RESTAURANT_NAME } from '../shared/menu.js';
+import { MENU_PDF_PATH, RESTAURANT_NAME } from '../shared/menu.js';
 import type { ApiErrorBody, BookingDetails, Order, PublicConfig } from '../shared/types.js';
 import { emptyDetails, nameKey, validateDetails, validateOrderInput } from '../shared/validation.js';
 import {
@@ -12,9 +12,8 @@ import {
   verifySessionToken,
 } from './auth.js';
 import type { ServerConfig } from './config.js';
-import { MENU_FILENAME, fetchMenuPdf } from './menu.js';
 import { fillBookingForm } from './pdf.js';
-import type { Store } from './store/types.js';
+import { DuplicateNameError, type Store } from './store/types.js';
 
 export type Handler = (request: Request) => Promise<Response>;
 
@@ -23,7 +22,6 @@ export interface AppDeps {
   /** null when no database is connected (production without Redis). */
   store: Store | null;
   loadTemplate: () => Promise<Uint8Array>;
-  fetchImpl?: typeof fetch;
   now?: () => Date;
 }
 
@@ -123,6 +121,37 @@ function assertSameOrigin(request: Request, url: URL) {
   if (originHost !== host) throw new HttpError(403, 'Cross-site request blocked');
 }
 
+const DB_DOWN_CODES = new Set([
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'EAI_AGAIN',
+  'CONNECT_TIMEOUT',
+  'CONNECTION_CLOSED',
+  'CONNECTION_ENDED',
+  'CONNECTION_DESTROYED',
+  'QUERY_TIMEOUT',
+  '28P01', // invalid password
+  '28000', // invalid authorization
+  '57P01', // admin shutdown
+  '57P03', // cannot connect now
+  '53300', // too many connections
+  'XX000', // pooler: tenant/user not found
+]);
+
+export function isDatabaseUnavailable(err: unknown): boolean {
+  const code = (err as { code?: unknown })?.code;
+  return typeof code === 'string' && DB_DOWN_CODES.has(code);
+}
+
+/** Error summary for logs - never includes connection strings. */
+function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const code = (err as { code?: unknown }).code;
+  return `${err.name}${code ? ` [${String(code)}]` : ''}: ${err.message.replace(/postgres(ql)?:\/\/\S+/g, '<db-url>')}`;
+}
+
 function byCreated(a: Order, b: Order) {
   return a.createdAt.localeCompare(b.createdAt) || a.name.localeCompare(b.name);
 }
@@ -130,7 +159,6 @@ function byCreated(a: Order, b: Order) {
 export function createApp(deps: AppDeps): Handler {
   const { config, store } = deps;
   const now = deps.now ?? (() => new Date());
-  const fetchImpl = deps.fetchImpl ?? fetch;
   const sessionKey = deriveSessionKey(config.sessionSecret, config.passwordFingerprint);
 
   const ordersOpen = () => now().getTime() <= config.deadline.getTime();
@@ -181,6 +209,18 @@ export function createApp(deps: AppDeps): Handler {
     return json(200, { authenticated: true }, { 'Set-Cookie': sessionCookie(createSessionToken(sessionKey, now()), secure) });
   }
 
+  /** The database enforces unique names too, in case two people submit at the same moment. */
+  async function saveOrDuplicate(s: Store, order: Order) {
+    try {
+      await s.saveOrder(order);
+    } catch (err) {
+      if (err instanceof DuplicateNameError) {
+        throw new HttpError(409, `${order.name} has already ordered.`, 'DUPLICATE', { name: err.message });
+      }
+      throw err;
+    }
+  }
+
   async function createOrder(request: Request): Promise<Response> {
     const s = requireStore();
     requireOpen();
@@ -199,7 +239,7 @@ export function createApp(deps: AppDeps): Handler {
     }
     const stamp = now().toISOString();
     const order: Order = { id: randomUUID(), ...result.value, createdAt: stamp, updatedAt: stamp };
-    await s.saveOrder(order);
+    await saveOrDuplicate(s, order);
     return json(201, { order });
   }
 
@@ -219,7 +259,7 @@ export function createApp(deps: AppDeps): Handler {
       });
     }
     const order: Order = { ...current, ...result.value, updatedAt: now().toISOString() };
-    await s.saveOrder(order);
+    await saveOrDuplicate(s, order);
     return json(200, { order });
   }
 
@@ -245,12 +285,9 @@ export function createApp(deps: AppDeps): Handler {
     return pdf(bytes, BOOKING_FORM_FILENAME, url.searchParams.get('disposition') === 'inline');
   }
 
-  async function menu(url: URL): Promise<Response> {
-    const bytes = await fetchMenuPdf(config.menuUrl, fetchImpl);
-    if (!bytes) {
-      return new Response(null, { status: 302, headers: { ...BASE_HEADERS, Location: config.menuUrl } });
-    }
-    return pdf(bytes, MENU_FILENAME, url.searchParams.get('disposition') === 'inline');
+  /** The menu PDF is a static file that the edge middleware also guards. */
+  function menu(): Response {
+    return new Response(null, { status: 302, headers: { ...BASE_HEADERS, Location: MENU_PDF_PATH } });
   }
 
   async function route(request: Request): Promise<Response> {
@@ -294,7 +331,7 @@ export function createApp(deps: AppDeps): Handler {
     }
     if (path === '/details' && method === 'PUT') return saveDetails(request);
     if (path === '/booking-form' && method === 'GET') return bookingForm(url);
-    if (path === '/menu' && method === 'GET') return menu(url);
+    if (path === '/menu' && method === 'GET') return menu();
 
     throw new HttpError(404, 'Not found', 'NOT_FOUND');
   }
@@ -304,7 +341,13 @@ export function createApp(deps: AppDeps): Handler {
       return await route(request);
     } catch (err) {
       if (err instanceof HttpError) return errorResponse(err);
-      console.error('Unhandled API error', err);
+      if (isDatabaseUnavailable(err)) {
+        console.error('Database unavailable', describeError(err));
+        return errorResponse(
+          new HttpError(503, "Can't reach the North Pole database right now - please try again in a moment.", 'DB_UNAVAILABLE'),
+        );
+      }
+      console.error('Unhandled API error', describeError(err));
       return errorResponse(new HttpError(500, 'Something went wrong on our side. Please try again.', 'SERVER_ERROR'));
     }
   };

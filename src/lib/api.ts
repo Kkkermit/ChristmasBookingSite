@@ -56,7 +56,6 @@ export const api = {
   saveDetails: (details: BookingDetails) => request<{ details: BookingDetails }>('/details', send('PUT', details)),
 };
 
-export const MENU_URL = '/api/menu';
 export const BOOKING_FORM_URL = '/api/booking-form';
 export const BOOKING_FORM_PREVIEW_URL = '/api/booking-form?disposition=inline';
 

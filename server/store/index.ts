@@ -1,11 +1,13 @@
 import path from 'node:path';
 import { MemoryStore } from './memory.js';
+import { connectPostgres } from './postgres.js';
 import { RedisStore, nodeRedisCommands, upstashCommands } from './redis.js';
 import type { Store } from './types.js';
 
 type Env = Record<string, string | undefined>;
 
 export type StoreChoice =
+  | { type: 'postgres'; url: string }
   | { type: 'upstash'; url: string; token: string }
   | { type: 'redis'; url: string }
   | { type: 'file'; path: string }
@@ -13,6 +15,10 @@ export type StoreChoice =
 
 /** Works out which storage backend the environment provides. */
 export function chooseStore(env: Env, isProduction: boolean): StoreChoice {
+  // Postgres (Supabase / Neon / any) - DATABASE_URL, or POSTGRES_URL as set by Vercel integrations.
+  const pgUrl = env.DATABASE_URL || env.POSTGRES_URL;
+  if (pgUrl && /^postgres(ql)?:\/\//.test(pgUrl)) return { type: 'postgres', url: pgUrl };
+
   const restUrl = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const restToken = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   if (restUrl && restToken) return { type: 'upstash', url: restUrl, token: restToken };
@@ -28,6 +34,8 @@ export function chooseStore(env: Env, isProduction: boolean): StoreChoice {
 
 export async function createStore(choice: StoreChoice): Promise<Store | null> {
   switch (choice.type) {
+    case 'postgres':
+      return connectPostgres(choice.url);
     case 'upstash':
       return new RedisStore(await upstashCommands(choice.url, choice.token), 'upstash');
     case 'redis':

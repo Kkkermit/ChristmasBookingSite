@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { LOGIN_MAX_FAILURES, resolveRoute } from '../server/app.js';
 import { MemoryStore } from '../server/store/memory.js';
+import { DuplicateNameError } from '../server/store/types.js';
+import { MENU_PDF_PATH } from '../shared/menu.js';
 import type { AppState, Order } from '../shared/types.js';
 import { ORIGIN, TEST_PASSWORD, login, makeApp, req, sampleOrder } from './helpers.js';
 
@@ -321,31 +323,87 @@ describe('downloads', () => {
     expect(inline.headers.get('content-disposition')).toMatch(/^inline;/);
   });
 
-  it('serves the restaurant menu PDF when the restaurant site is reachable', async () => {
-    const { clearMenuCache } = await import('../server/menu.js');
-    clearMenuCache();
-    const pdf = new TextEncoder().encode('%PDF-1.7 fake menu');
-    const { app, config } = makeApp({ fetchImpl: async () => new Response(pdf, { status: 200 }) });
-    const cookie = await login(app);
-    const res = await app(req('GET', '/api/menu', { cookie }));
-    expect(res.status).toBe(200);
-    expect(res.headers.get('content-disposition')).toContain('Smokehouse-and-Cellar-Christmas-Menu-2026.pdf');
-    expect(config.menuUrl).toContain('smokehouseandcellar.com');
-    clearMenuCache();
-  });
-
-  it('falls back to redirecting to the restaurant’s link if it cannot fetch the menu', async () => {
-    const { clearMenuCache } = await import('../server/menu.js');
-    clearMenuCache();
-    const { app, config } = makeApp({
-      fetchImpl: async () => {
-        throw new Error('offline');
-      },
-    });
+  it('sends logged-in users to the (edge-protected) menu PDF', async () => {
+    const { app } = makeApp();
     const cookie = await login(app);
     const res = await app(req('GET', '/api/menu', { cookie }));
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe(config.menuUrl);
+    expect(res.headers.get('location')).toBe(MENU_PDF_PATH);
+  });
+});
+
+describe('dish options', () => {
+  async function setup() {
+    const ctx = makeApp();
+    const cookie = await login(ctx.app);
+    return (body: unknown) => ctx.app(req('POST', '/api/orders', { cookie, body }));
+  }
+
+  it('requires cream or ice cream with the fudge cake', async () => {
+    const post = await setup();
+    const missing = await post(sampleOrder({ dessert: 'chocolate_fudge_cake' }));
+    expect(missing.status).toBe(400);
+    expect(((await missing.json()) as { fieldErrors: Record<string, string> }).fieldErrors).toEqual({
+      dessertOption: 'Please choose cream or ice cream',
+    });
+    const ok = await post(sampleOrder({ dessert: 'chocolate_fudge_cake', dessertOption: 'ice_cream' }));
+    expect(ok.status).toBe(201);
+    expect(((await ok.json()) as { order: Order }).order.dessertOption).toBe('ice_cream');
+  });
+
+  it('defaults the soup to the standard version and accepts the gluten-free option', async () => {
+    const post = await setup();
+    const standard = (await (await post(sampleOrder({ starter: 'butternut_squash_soup' }))).json()) as { order: Order };
+    expect(standard.order.starterOption).toBe('standard');
+    const gf = await post(sampleOrder({ name: 'Ben', starter: 'butternut_squash_soup', starterOption: 'gluten_free' }));
+    expect(((await gf.json()) as { order: Order }).order.starterOption).toBe('gluten_free');
+  });
+
+  it('rejects made-up options and ignores options for dishes that have none', async () => {
+    const post = await setup();
+    expect((await post(sampleOrder({ dessert: 'chocolate_fudge_cake', dessertOption: 'custard' }))).status).toBe(400);
+    const res = await post(sampleOrder({ mainOption: 'extra_gravy' }));
+    expect(((await res.json()) as { order: Order }).order.mainOption).toBe('');
+  });
+});
+
+describe('database failures', () => {
+  it('turns a duplicate-name race caught by the database into a friendly 409', async () => {
+    const store = new MemoryStore();
+    store.saveOrder = async () => {
+      throw new DuplicateNameError();
+    };
+    const { app } = makeApp({ store });
+    const cookie = await login(app);
+    const res = await app(req('POST', '/api/orders', { cookie, body: sampleOrder() }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: 'DUPLICATE', fieldErrors: { name: expect.any(String) } });
+  });
+
+  it('reports an unreachable database as a 503 without leaking details', async () => {
+    const store = new MemoryStore();
+    store.listOrders = async () => {
+      throw Object.assign(new Error('connect ECONNREFUSED postgres://user:secret@db:6543/postgres'), { code: 'ECONNREFUSED' });
+    };
+    const { app } = makeApp({ store });
+    const cookie = await login(app);
+    const res = await app(req('GET', '/api/state', { cookie }));
+    expect(res.status).toBe(503);
+    const body = await res.text();
+    expect(body).toContain('DB_UNAVAILABLE');
+    expect(body).not.toContain('secret');
+  });
+
+  it('hides unexpected errors behind a generic 500', async () => {
+    const store = new MemoryStore();
+    store.getDetails = async () => {
+      throw new Error('kaboom with internals');
+    };
+    const { app } = makeApp({ store });
+    const cookie = await login(app);
+    const res = await app(req('GET', '/api/state', { cookie }));
+    expect(res.status).toBe(500);
+    expect(await res.text()).not.toContain('internals');
   });
 });
 
