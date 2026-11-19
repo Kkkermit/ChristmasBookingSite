@@ -1,0 +1,5 @@
+.data
+coverage
+tests
+src/**/*.test.ts
+src/**/*.test.tsx
