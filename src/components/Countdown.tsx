@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { useNow } from '../hooks/useNow';
 import { timeLeft } from '../lib/format';
 
@@ -9,14 +9,15 @@ const Tile = memo(function Tile({ value, label }: { value: number; label: string
     <div className="flex flex-col items-center">
       <div className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/15 to-white/5 shadow-inner sm:h-20 sm:w-20">
         <div className="absolute inset-x-0 top-1/2 h-px bg-black/30" />
-        <AnimatePresence mode="popLayout" initial={false}>
+        {/* Old and new digits are stacked absolutely, so a tick never causes layout work. */}
+        <AnimatePresence initial={false}>
           <motion.span
             key={text}
-            initial={{ y: '-100%', opacity: 0, rotateX: 80 }}
-            animate={{ y: '0%', opacity: 1, rotateX: 0 }}
-            exit={{ y: '100%', opacity: 0, rotateX: -80 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
-            className="font-display text-2xl tabular-nums text-white sm:text-4xl"
+            initial={{ y: '-60%', opacity: 0 }}
+            animate={{ y: '0%', opacity: 1 }}
+            exit={{ y: '60%', opacity: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 flex items-center justify-center font-display text-2xl tabular-nums text-white will-change-transform sm:text-4xl"
           >
             {text}
           </motion.span>
@@ -28,9 +29,14 @@ const Tile = memo(function Tile({ value, label }: { value: number; label: string
 });
 
 /** Owns its own one-second clock, so only these four tiles re-render each tick. */
-export function Countdown({ deadline }: { deadline: string }) {
+export function Countdown({ deadline, onExpire }: { deadline: string; onExpire?(): void }) {
   const now = useNow(1000);
   const left = timeLeft(new Date(deadline), now);
+  const expired = left.totalMs === 0;
+  useEffect(() => {
+    // Ask the server for the locked state as soon as the deadline passes.
+    if (expired) onExpire?.();
+  }, [expired, onExpire]);
   return (
     <div className="flex items-start justify-center gap-2 sm:gap-3" role="timer" aria-label={`${left.days} days, ${left.hours} hours and ${left.minutes} minutes left to order`}>
       <Tile value={left.days} label="Days" />

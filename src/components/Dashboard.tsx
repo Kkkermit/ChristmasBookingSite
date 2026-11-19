@@ -2,6 +2,7 @@ import { ListChecks, Pencil, Send, UserRound, UtensilsCrossed, type LucideIcon }
 import { motion } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import type { Order } from '../../shared/types';
+import { useActiveSection } from '../hooks/useActiveSection';
 import { useBookingData } from '../hooks/useBookingData';
 import { ApiError, api } from '../lib/api';
 import { bigCelebration, celebrate } from '../lib/celebrate';
@@ -16,6 +17,15 @@ import { DashboardSkeleton, ErrorState } from './states';
 import { Tally } from './Tally';
 import { useToast } from './Toasts';
 import { Workshop } from './Workshop';
+
+const SECTIONS = ['order', 'nice-list', 'workshop'] as const;
+
+/** Bring a card into view once it has rendered (after the list animation starts). */
+function revealOrder(id: string) {
+  setTimeout(() => {
+    document.getElementById(`order-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 250);
+}
 
 function HowItWorks({ partySize }: { partySize: number }) {
   const steps: Array<{ Icon: LucideIcon; text: string }> = [
@@ -74,7 +84,9 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
       upsertOrder(order);
       setEditing(null);
       setHighlightId(order.id);
-      setTimeout(() => setHighlightId(null), 2000);
+      setTimeout(() => setHighlightId(null), 2200);
+      // Show them their order on the Nice List.
+      revealOrder(order.id);
       if (wasNew) {
         rememberMyOrder(order.id);
         setMine(myOrderIds());
@@ -121,17 +133,19 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
     }
   }, [editing, reload, removeOrder, toDelete, toast]);
 
+  const activeSection = useActiveSection(SECTIONS, state !== null);
   const cancelDelete = useCallback(() => setToDelete(null), []);
+  const refresh = useCallback(() => void reload(), [reload]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10">
-      <Header onLogout={logout} loggingOut={loggingOut} />
+      <Header onLogout={logout} loggingOut={loggingOut} active={activeSection} />
       <main className="mx-auto max-w-6xl px-4 pb-72 sm:pb-80">
         {!state && error && <ErrorState error={error} onRetry={() => void reload()} retrying={refreshing} />}
         {!state && !error && <DashboardSkeleton />}
         {state && (
           <>
-            <Hero config={state.config} orders={state.orders} />
+            <Hero config={state.config} orders={state.orders} onDeadline={refresh} />
 
             <section id="order" ref={formRef} aria-labelledby="order-title" className="mt-16 sm:mt-20">
               <SectionHeading
@@ -146,6 +160,7 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
                   editing={editing}
                   onSaved={handleSaved}
                   onCancelEdit={() => setEditing(null)}
+                  onStale={refresh}
                 />
                 <aside className="hidden lg:sticky lg:top-28 lg:block">
                   {state.orders.length === 0 ? <HowItWorks partySize={state.config.partySize} /> : <Tally orders={state.orders} />}

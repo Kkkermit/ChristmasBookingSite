@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 
 /** Golden silhouette of Santa's sleigh pulled by two reindeer (faces left). */
@@ -39,49 +39,60 @@ function SleighSilhouette({ className }: { className?: string }) {
   );
 }
 
-/** Every so often Santa's sleigh swoops across the sky, trailing sparkles. */
+const FLIGHT_SECONDS = 9;
+
+/**
+ * Every so often Santa's sleigh swoops across the sky, trailing sparkles.
+ * It moves with transforms only (no layout work per frame), always flies
+ * completely off-screen, and is removed from the page once it has gone.
+ */
 export function Sleigh({ everyMs = 26000 }: { everyMs?: number }) {
   const reduced = useReducedMotion();
-  const [flight, setFlight] = useState(0);
+  const [flight, setFlight] = useState<{ id: number; width: number } | null>(null);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (reduced) return;
-    const first = setTimeout(() => setFlight((n) => n + 1), 4000);
-    const timer = setInterval(() => setFlight((n) => n + 1), everyMs);
+    const launch = () => {
+      if (document.hidden) return;
+      setCount((n) => n + 1);
+      setFlight((f) => f ?? { id: Date.now(), width: window.innerWidth });
+    };
+    const first = setTimeout(launch, 4000);
+    const timer = setInterval(launch, everyMs);
     return () => {
       clearTimeout(first);
       clearInterval(timer);
     };
   }, [everyMs, reduced]);
 
-  const leftToRight = flight % 2 === 1;
+  if (!flight) return null;
+  const leftToRight = count % 2 === 0;
+  // The sleigh + sparkle trail is at most ~280px wide; start and finish well beyond the edges.
+  const offLeft = -320;
+  const offRight = flight.width + 40;
 
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-24 z-40 h-40 overflow-hidden">
-      <AnimatePresence>
-        {flight > 0 && (
-          <motion.div
-            key={flight}
-            className="absolute top-0 flex items-center text-gold-300"
-            style={{ scaleX: leftToRight ? -1 : 1 }}
-            initial={{ left: leftToRight ? '-30%' : '110%', y: 70, rotate: leftToRight ? 6 : -6 }}
-            animate={{ left: leftToRight ? '110%' : '-30%', y: [70, 10, 40, 0], rotate: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 9, ease: 'linear' }}
-          >
-            <SleighSilhouette className="h-10 w-36 sm:h-14 sm:w-48" />
-            <span className="ml-1 flex gap-1.5">
-              {Array.from({ length: 6 }, (_, i) => (
-                <span
-                  key={i}
-                  className="block h-1.5 w-1.5 animate-twinkle rounded-full bg-gold-300"
-                  style={{ animationDelay: `${i * 0.15}s`, opacity: 1 - i * 0.14 }}
-                />
-              ))}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-28 z-[5] h-36 overflow-hidden">
+      <motion.div
+        key={flight.id}
+        className="absolute left-0 top-0 flex items-center text-gold-300 will-change-transform"
+        initial={{ x: leftToRight ? offLeft : offRight, y: 60, scaleX: leftToRight ? -1 : 1 }}
+        animate={{ x: leftToRight ? offRight : offLeft, y: [60, 12, 36, 4] }}
+        transition={{ duration: FLIGHT_SECONDS, ease: 'linear', y: { duration: FLIGHT_SECONDS, ease: 'easeInOut' } }}
+        onAnimationComplete={() => setFlight(null)}
+      >
+        <SleighSilhouette className="h-10 w-36 sm:h-14 sm:w-48" />
+        <span className="ml-1 flex gap-1.5">
+          {Array.from({ length: 6 }, (_, i) => (
+            <span
+              key={i}
+              className="block h-1.5 w-1.5 animate-twinkle rounded-full bg-gold-300"
+              style={{ animationDelay: `${i * 0.15}s`, opacity: 1 - i * 0.14 }}
+            />
+          ))}
+        </span>
+      </motion.div>
     </div>
   );
 }

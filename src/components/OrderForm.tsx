@@ -1,4 +1,4 @@
-import { Ban, Check, ChefHat, Lock, Save, Send, TriangleAlert, UserRound, X } from 'lucide-react';
+import { Ban, Check, ChefHat, Lock, RotateCcw, Save, Send, TriangleAlert, UserRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import {
@@ -29,50 +29,88 @@ const EMPTY: OrderInput = {
   notes: '',
 };
 
-function DishCard({ name, dish, checked, onSelect }: { name: string; dish: Dish; checked: boolean; onSelect(): void }) {
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+
+/**
+ * Radio input that can also be unselected: a click on the option that's already
+ * chosen clears it (onChange never fires for an already-checked radio).
+ */
+function ToggleRadio({
+  name,
+  value,
+  checked,
+  onSelect,
+  onClear,
+}: {
+  name: string;
+  value: string;
+  checked: boolean;
+  onSelect(): void;
+  onClear(): void;
+}) {
   return (
-    <motion.label
-      layout
-      whileHover={{ y: -3 }}
-      whileTap={{ scale: 0.98 }}
-      className={`group relative flex cursor-pointer gap-3 rounded-2xl border p-3.5 transition-colors has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+    <input
+      type="radio"
+      name={name}
+      value={value}
+      checked={checked}
+      onChange={onSelect}
+      onClick={() => {
+        if (checked) onClear();
+      }}
+      className="sr-only"
+    />
+  );
+}
+
+function DishCard({
+  name,
+  dish,
+  checked,
+  onSelect,
+  onClear,
+}: {
+  name: string;
+  dish: Dish;
+  checked: boolean;
+  onSelect(): void;
+  onClear(): void;
+}) {
+  return (
+    <label
+      className={`group relative flex cursor-pointer select-none gap-3 rounded-2xl border p-3.5 transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.985] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
         checked
-          ? 'border-gold-400 bg-gradient-to-br from-gold-400/20 to-holly-500/10 shadow-lg shadow-gold-500/15'
+          ? 'border-gold-400 bg-gold-400/15 shadow-lg shadow-gold-500/15'
           : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
       }`}
     >
-      <input type="radio" name={name} value={dish.id} checked={checked} onChange={onSelect} className="sr-only" />
+      <ToggleRadio name={name} value={dish.id} checked={checked} onSelect={onSelect} onClear={onClear} />
       <motion.span
         aria-hidden="true"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors ${
+        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors duration-200 ${
           checked ? 'bg-gold-400 text-night-950' : 'bg-white/10 text-gold-300 group-hover:bg-white/15'
         }`}
-        animate={checked ? { rotate: [0, -12, 10, -5, 0], scale: [1, 1.18, 1.05] } : { rotate: 0, scale: 1 }}
-        transition={{ duration: 0.5 }}
+        animate={checked ? { rotate: [0, -10, 8, 0], scale: [1, 1.12, 1] } : { rotate: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
       >
         <DishIcon icon={dish.icon} className="h-6 w-6" />
       </motion.span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-6">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-7">
           <span className="font-bold leading-tight">{dish.name}</span>
           <DietaryBadges dietary={dish.dietary} />
         </span>
         <span className="mt-1 block text-[0.8rem] leading-snug text-white/60">{dish.description}</span>
       </span>
-      <AnimatePresence>
-        {checked && (
-          <motion.span
-            initial={{ scale: 0, rotate: -45 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0 }}
-            className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-gold-400 text-night-950 shadow"
-            aria-hidden="true"
-          >
-            <Check className="h-4 w-4" strokeWidth={3} />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.label>
+      <span
+        aria-hidden="true"
+        className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full transition-all duration-200 ${
+          checked ? 'scale-100 bg-gold-400 text-night-950 opacity-100' : 'scale-50 opacity-0'
+        }`}
+      >
+        <Check className="h-4 w-4" strokeWidth={3} />
+      </span>
+    </label>
   );
 }
 
@@ -97,6 +135,7 @@ function OptionPicker({
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.24, ease: EASE_OUT }}
       className="overflow-hidden"
       aria-describedby={error ? errorId : undefined}
     >
@@ -113,17 +152,17 @@ function OptionPicker({
             return (
               <label
                 key={choice.id}
-                className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+                className={`inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
                   checked ? 'border-gold-400 bg-gold-400 text-night-950' : 'border-white/15 bg-white/5 hover:bg-white/10'
                 }`}
               >
-                <input
-                  type="radio"
+                <ToggleRadio
                   name={name}
                   value={choice.id}
                   checked={checked}
-                  onChange={() => onChange(choice.id)}
-                  className="sr-only"
+                  onSelect={() => onChange(choice.id)}
+                  // Unselecting falls back to the menu's default (e.g. standard soup), or to nothing.
+                  onClear={() => onChange(options.defaultChoice ?? '')}
                 />
                 {checked && <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />}
                 {choice.label}
@@ -179,22 +218,22 @@ function CoursePicker({
             dish={dish}
             checked={value === dish.id}
             onSelect={() => onPick(dish.id)}
+            onClear={() => onPick('')}
           />
         ))}
       </div>
       {course.skippable && (
         <label
-          className={`mt-3 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-dashed px-4 py-2 text-sm font-semibold transition has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+          className={`mt-3 inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-xl border border-dashed px-4 py-2 text-sm font-semibold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
             value === SKIP ? 'border-gold-400 bg-gold-400/15 text-gold-300' : 'border-white/20 text-white/60 hover:border-white/40 hover:text-white'
           }`}
         >
-          <input
-            type="radio"
+          <ToggleRadio
             name={`${idPrefix}-${course.id}`}
             value={SKIP}
             checked={value === SKIP}
-            onChange={() => onPick(SKIP)}
-            className="sr-only"
+            onSelect={() => onPick(SKIP)}
+            onClear={() => onPick('')}
           />
           <Ban className="h-4 w-4" aria-hidden="true" />
           No {course.singular} for me
@@ -272,9 +311,11 @@ interface OrderFormProps {
   editing: Order | null;
   onSaved(order: Order, wasNew: boolean): void;
   onCancelEdit(): void;
+  /** Called when the server says our copy is out of date (e.g. the order was deleted elsewhere). */
+  onStale?(): void;
 }
 
-export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: OrderFormProps) {
+export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onStale }: OrderFormProps) {
   const [values, setValues] = useState<OrderInput>(EMPTY);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -329,6 +370,12 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
   };
 
   const full = !editing && orders.length >= config.maxGuests;
+  const hasChoices = COURSES.some((c) => values[c.id] !== '');
+
+  const clearChoices = () => {
+    setValues((v) => ({ ...v, starter: '', starterOption: '', main: '', mainOption: '', dessert: '', dessertOption: '' }));
+    clearErrors('starter', 'starterOption', 'main', 'mainOption', 'dessert', 'dessertOption');
+  };
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -353,6 +400,12 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
       if (err instanceof ApiError) {
         if (err.fieldErrors) setErrors(err.fieldErrors);
         toast.show(err.message, 'error');
+        if (err.code === 'NOT_FOUND' && editing) {
+          // Someone deleted this order while it was being edited.
+          onCancelEdit();
+          onStale?.();
+        }
+        if (err.code === 'CLOSED') onStale?.();
       } else {
         toast.show('Something went wrong - please try again.', 'error');
       }
@@ -378,8 +431,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
   }
 
   return (
-    <motion.form
-      layout
+    <form
       onSubmit={submit}
       noValidate
       aria-busy={busy}
@@ -472,6 +524,19 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
         <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-white/60">Your festive plate</p>
         <PlatePreview values={values} />
         <p className="mt-3 text-center text-sm text-white/70">{plateSummary(values)}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-white/45">
+          <span>Changed your mind? Tap a chosen dish again to unselect it.</span>
+          {hasChoices && (
+            <button
+              type="button"
+              onClick={clearChoices}
+              className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              Clear choices
+            </button>
+          )}
+        </div>
       </div>
 
       <button type="submit" className="btn-primary w-full py-4 text-lg" disabled={busy}>
@@ -481,6 +546,6 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit }: Or
           {busy ? 'Wrapping it up…' : editing ? 'Save changes' : 'Send my order to Santa'}
         </span>
       </button>
-    </motion.form>
+    </form>
   );
 }

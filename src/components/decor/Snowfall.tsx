@@ -67,8 +67,11 @@ export function Snowfall({ density = 1 }: { density?: number }) {
     let frame = 0;
     let last = performance.now();
 
+    // Phones: draw at 1x and ~30fps. Soft snowflakes look the same, but the
+    // full-screen canvas costs a quarter of the pixels and half the frames.
+    const small = () => window.innerWidth < 768;
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = small() ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = Math.floor(width * dpr);
@@ -80,6 +83,10 @@ export function Snowfall({ density = 1 }: { density?: number }) {
     };
 
     const render = (now: number) => {
+      if (small() && now - last < 30) {
+        frame = requestAnimationFrame(render);
+        return;
+      }
       const dt = Math.min(48, now - last) / 16.67;
       last = now;
       const t = now / 1000;

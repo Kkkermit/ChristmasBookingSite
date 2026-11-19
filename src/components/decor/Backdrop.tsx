@@ -32,7 +32,8 @@ export function Backdrop({ moon = false }: { moon?: boolean }) {
       {STARS.map((s, i) => (
         <span
           key={i}
-          className="absolute animate-twinkle rounded-full bg-white"
+          // Half the stars on phones: each twinkling star is its own GPU layer.
+          className={`absolute animate-twinkle rounded-full bg-white ${i % 2 ? 'hidden sm:block' : ''}`}
           style={{
             left: `${s.left}%`,
             top: `${s.top}%`,

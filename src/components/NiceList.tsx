@@ -42,8 +42,9 @@ function OrderCard({
   const colour = colourFor(order.name);
   return (
     <motion.li
-      layout
-      initial={{ opacity: 0, y: 30, rotate: index % 2 ? 3 : -3, scale: 0.9 }}
+      id={`order-${order.id}`}
+      layout="position"
+      initial={{ opacity: 0, y: 24, rotate: index % 2 ? 2 : -2, scale: 0.95 }}
       animate={{
         opacity: 1,
         y: 0,
@@ -52,7 +53,7 @@ function OrderCard({
         boxShadow: highlight ? ['0 0 0px #fcd34d00', '0 0 40px #fcd34dcc', '0 0 0px #fcd34d00'] : '0 0 0px #fcd34d00',
       }}
       exit={{ opacity: 0, x: 80, rotate: 8, scale: 0.8, transition: { duration: 0.3 } }}
-      transition={{ type: 'spring', stiffness: 220, damping: 20, boxShadow: { duration: 1.6 } }}
+      transition={{ type: 'spring', stiffness: 260, damping: 28, boxShadow: { duration: 1.8 } }}
       className={`relative flex flex-col overflow-hidden rounded-3xl border bg-night-800/90 p-4 sm:p-5 ${
         isEditing ? 'border-gold-400' : 'border-white/10'
       }`}

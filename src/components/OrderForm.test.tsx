@@ -55,6 +55,59 @@ describe('OrderForm', () => {
     await waitFor(() => expect(screen.queryByRole('radio', { name: 'Gluten-free option' })).not.toBeInTheDocument());
   });
 
+  it('lets you unselect a dish, a skip choice or an option by tapping it again', async () => {
+    renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
+
+    const seabass = screen.getByRole('radio', { name: /^Seabass/ });
+    await userEvent.click(seabass);
+    expect(seabass).toBeChecked();
+    await userEvent.click(seabass);
+    expect(seabass).not.toBeChecked();
+
+    const skipStarter = screen.getByRole('radio', { name: /No starter/ });
+    await userEvent.click(skipStarter);
+    expect(skipStarter).toBeChecked();
+    await userEvent.click(skipStarter);
+    expect(skipStarter).not.toBeChecked();
+
+    // Fudge cake option has no default: tapping it again clears it.
+    await userEvent.click(screen.getByRole('radio', { name: /Ultimate Chocolate Fudge Cake/ }));
+    const iceCream = screen.getByRole('radio', { name: 'Ice cream' });
+    await userEvent.click(iceCream);
+    expect(iceCream).toBeChecked();
+    await userEvent.click(iceCream);
+    expect(iceCream).not.toBeChecked();
+
+    // Soup option falls back to the menu's default (standard).
+    await userEvent.click(screen.getByRole('radio', { name: /Butternut Squash Soup/ }));
+    const gf = screen.getByRole('radio', { name: 'Gluten-free option' });
+    await userEvent.click(gf);
+    await userEvent.click(gf);
+    expect(screen.getByRole('radio', { name: 'Standard' })).toBeChecked();
+  });
+
+  it('clears every choice at once', async () => {
+    renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);
+    expect(screen.queryByRole('button', { name: /clear choices/i })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Shrimp Cocktail/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /^Seabass/ }));
+    await userEvent.click(screen.getByRole('button', { name: /clear choices/i }));
+    expect(screen.getAllByRole('radio').filter((r) => (r as HTMLInputElement).checked)).toHaveLength(0);
+  });
+
+  it('drops out of edit mode if the order was deleted by someone else', async () => {
+    mockFetch(() => ({ status: 404, body: { error: 'That order no longer exists', code: 'NOT_FOUND' } }));
+    const onCancel = vi.fn();
+    const onStale = vi.fn();
+    const existing = order();
+    renderWithToasts(
+      <OrderForm config={config()} orders={[existing]} editing={existing} onSaved={noop} onCancelEdit={onCancel} onStale={onStale} />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(onStale).toHaveBeenCalled());
+    expect(onCancel).toHaveBeenCalled();
+  });
+
   it('highlights everything missing instead of submitting an empty order', async () => {
     const calls = mockFetch(() => undefined);
     renderWithToasts(<OrderForm config={config()} orders={[]} editing={null} onSaved={noop} onCancelEdit={noop} />);

@@ -10,7 +10,16 @@ const LINKS = [
   { href: '#workshop', label: 'Workshop', Icon: Wrench },
 ];
 
-export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut: boolean }) {
+export function Header({
+  onLogout,
+  loggingOut,
+  active = null,
+}: {
+  onLogout(): void;
+  loggingOut: boolean;
+  /** id of the section currently on screen, highlighted in the nav */
+  active?: string | null;
+}) {
   return (
     <>
       <motion.header
@@ -31,7 +40,10 @@ export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut:
               <a
                 key={l.href}
                 href={l.href}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white"
+                aria-current={active === l.href.slice(1) ? 'true' : undefined}
+                className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold transition-colors duration-200 hover:bg-white/10 hover:text-white ${
+                  active === l.href.slice(1) ? 'bg-white/10 text-gold-300' : 'text-white/75'
+                }`}
               >
                 <l.Icon className="h-4 w-4" aria-hidden="true" />
                 {l.label}
@@ -62,7 +74,10 @@ export function Header({ onLogout, loggingOut }: { onLogout(): void; loggingOut:
           <a
             key={l.href}
             href={l.href}
-            className="flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold text-white/80 active:bg-white/10"
+            aria-current={active === l.href.slice(1) ? 'true' : undefined}
+            className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-colors duration-200 active:bg-white/10 ${
+              active === l.href.slice(1) ? 'bg-white/10 text-gold-300' : 'text-white/80'
+            }`}
           >
             <l.Icon className="h-5 w-5" aria-hidden="true" />
             {l.label}

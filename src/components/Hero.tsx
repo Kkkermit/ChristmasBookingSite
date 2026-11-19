@@ -9,7 +9,7 @@ import { Countdown } from './Countdown';
 
 const WORDS = ['Christmas', 'Feast'];
 
-export function Hero({ config, orders }: { config: PublicConfig; orders: Order[] }) {
+export function Hero({ config, orders, onDeadline }: { config: PublicConfig; orders: Order[]; onDeadline?(): void }) {
   // Minute resolution is plenty for "sleeps till Christmas"; only the countdown ticks every second.
   const now = useNow(60_000);
   const count = orders.length;
@@ -83,7 +83,7 @@ export function Hero({ config, orders }: { config: PublicConfig; orders: Order[]
             {config.ordersOpen ? 'Orders close in' : 'Orders are closed'}
           </p>
           {config.ordersOpen ? (
-            <Countdown deadline={config.deadline} />
+            <Countdown deadline={config.deadline} onExpire={onDeadline} />
           ) : (
             <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-gold-300">
               <Lock className="h-8 w-8" aria-hidden="true" />
@@ -105,11 +105,13 @@ export function Hero({ config, orders }: { config: PublicConfig; orders: Order[]
           <BaubleGarland orders={orders} partySize={config.partySize} />
           <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
             <motion.div
-              className="candy-stripes h-full rounded-full bg-gradient-to-r from-holly-500 via-gold-400 to-pine-500"
+              className="relative h-full origin-left overflow-hidden rounded-full bg-gradient-to-r from-holly-500 via-gold-400 to-pine-500"
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, (count / config.partySize) * 100)}%` }}
-              transition={{ type: 'spring', stiffness: 60, damping: 16 }}
-            />
+              transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <span className="candy-sheen opacity-60" aria-hidden="true" />
+            </motion.div>
           </div>
         </div>
       </motion.div>
