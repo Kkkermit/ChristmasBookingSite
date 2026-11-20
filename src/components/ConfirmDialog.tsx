@@ -1,5 +1,6 @@
-import { Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
+import { AsciiArt } from './ascii/AsciiArt';
+import { ART_BIN } from './ascii/pieces';
 import { Spinner } from './Spinner';
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -43,20 +44,18 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
             aria-modal="true"
             aria-labelledby="confirm-title"
             aria-describedby="confirm-body"
-            className="w-full max-w-sm rounded-3xl border border-white/10 bg-night-900 p-6 text-center shadow-2xl shadow-black/60 sm:p-7"
+            className="ticks w-full max-w-sm rounded-[4px] border border-white/20 bg-night-900 p-6 text-center shadow-2xl shadow-black sm:p-7"
             initial={{ y: 60, scale: 0.9, rotate: -2 }}
             animate={{ y: 0, scale: 1, rotate: 0 }}
             exit={{ y: 40, scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 320, damping: 24 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-holly-500/20 text-holly-400">
-              <Trash2 className="h-7 w-7" aria-hidden="true" />
-            </span>
-            <h2 id="confirm-title" className="font-display text-2xl">
+            <AsciiArt lines={ART_BIN.lines} mask={ART_BIN.mask} className="mx-auto mb-3 w-fit text-sm" />
+            <h2 id="confirm-title" className="font-display text-[2rem] leading-none">
               {title}
             </h2>
-            <p id="confirm-body" className="mt-2 text-white/70">
+            <p id="confirm-body" className="mt-3 text-sm text-white/70">
               {body}
             </p>
             <div className="mt-6 grid grid-cols-2 gap-3">
@@ -64,7 +63,7 @@ export function ConfirmDialog({ open, title, body, confirmLabel, busy, onConfirm
                 Keep it
               </button>
               <button type="button" className="btn-primary" onClick={onConfirm} disabled={busy}>
-                {busy && <Spinner className="h-4 w-4" />}
+                {busy && <Spinner />}
                 {busy ? 'Removing…' : confirmLabel}
               </button>
             </div>

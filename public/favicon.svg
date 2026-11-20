@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#04110d"/>
-  <path d="M32 9 L15 33 h8 L11 49 h42 L41 33 h8 Z" fill="#16a34a"/>
-  <rect x="28" y="49" width="8" height="7" rx="1.5" fill="#92400e"/>
-  <circle cx="26" cy="31" r="2.6" fill="#ef4444"/>
-  <circle cx="38" cy="40" r="2.6" fill="#fbbf24"/>
-  <circle cx="24" cy="44" r="2.6" fill="#38bdf8"/>
-  <path d="M32 3 l2.4 5 5.4.6-4 3.7 1.1 5.3-4.9-2.7-4.9 2.7 1.1-5.3-4-3.7 5.4-.6z" fill="#fde047"/>
+  <rect width="64" height="64" rx="10" fill="#000"/>
+  <g font-family="ui-monospace,Menlo,Consolas,monospace" font-weight="700" text-anchor="middle">
+    <text x="32" y="19" font-size="20" fill="#ffdf7e">*</text>
+    <text x="32" y="34" font-size="16" fill="#2fc46b">/<tspan fill="#ff2b46">o</tspan>\</text>
+    <text x="32" y="49" font-size="16" fill="#2fc46b">/<tspan fill="#fff">*</tspan>.<tspan fill="#ff2b46">o</tspan>\</text>
+    <text x="32" y="60" font-size="12" fill="#b0773c">||</text>
+  </g>
 </svg>

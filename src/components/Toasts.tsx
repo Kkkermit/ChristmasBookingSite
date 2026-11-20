@@ -1,6 +1,6 @@
-import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Glyph, type GlyphName } from './ascii/Glyph';
 
 type Tone = 'success' | 'error' | 'info';
 interface Toast {
@@ -17,11 +17,11 @@ const ToastContext = createContext<ToastApi>({ show: () => {} });
 
 export const useToast = () => useContext(ToastContext);
 
-const ICON: Record<Tone, LucideIcon> = { success: CircleCheck, error: CircleAlert, info: Info };
+const GLYPH: Record<Tone, GlyphName> = { success: 'ok', error: 'error', info: 'info' };
 const STYLE: Record<Tone, string> = {
-  success: 'border-pine-500/40 bg-pine-700/90',
-  error: 'border-holly-400/50 bg-holly-600/90',
-  info: 'border-white/20 bg-night-800/95',
+  success: 'border-white/70 bg-black/95 [&_.toast-glyph]:text-pine-400',
+  error: 'border-holly-400 bg-holly-700/95 [&_.toast-glyph]:text-white',
+  info: 'border-white/25 bg-night-800/95 [&_.toast-glyph]:text-holly-400',
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -50,7 +50,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       >
         <AnimatePresence>
           {toasts.map((t) => {
-            const Icon = ICON[t.tone];
             return (
               <motion.div
                 key={t.id}
@@ -59,19 +58,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 10, scale: 0.9 }}
                 transition={{ type: 'spring', stiffness: 380, damping: 26 }}
-                className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-2xl border py-3 pl-4 pr-2 text-left text-sm font-medium text-white shadow-2xl backdrop-blur-md ${STYLE[t.tone]}`}
+                className={`pointer-events-auto flex max-w-md items-center gap-3 rounded-[3px] border py-3 pl-4 pr-2 text-left text-xs font-medium text-white shadow-2xl shadow-black ${STYLE[t.tone]}`}
               >
-                <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                <Glyph name={GLYPH[t.tone]} className="toast-glyph" />
                 <span role={t.tone === 'error' ? 'alert' : 'status'} className="flex-1">
                   {t.message}
                 </span>
                 <button
                   type="button"
                   onClick={() => dismiss(t.id)}
-                  className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] font-mono text-sm font-bold text-white/70 hover:bg-white/10 hover:text-white"
                   aria-label="Dismiss"
                 >
-                  <X className="h-4 w-4" aria-hidden="true" />
+                  <span aria-hidden="true">x</span>
                 </button>
               </motion.div>
             );

@@ -66,7 +66,7 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-const PALETTE = ['#f43f5e', '#22c55e', '#f59e0b', '#38bdf8', '#a855f7', '#ec4899', '#14b8a6', '#ef4444'];
+const PALETTE = ['#ff2b46', '#ffffff', '#ff7a8c', '#5ee38f', '#ffdf7e', '#ff4d6d', '#e4e4e7', '#ffa3ae'];
 
 /** Stable festive colour per name. */
 export function colourFor(name: string): string {

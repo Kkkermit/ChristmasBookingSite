@@ -1,4 +1,3 @@
-import { BookOpen, Check, Download, Eye, FileText, Info, NotebookPen, Save, Wrench } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import { MENU_PDF_FILENAME, MENU_PDF_PATH, PRICE_PER_HEAD, formatPrice } from '../../shared/menu';
@@ -6,41 +5,74 @@ import type { BookingDetails, Order, PublicConfig } from '../../shared/types';
 import { DETAIL_FIELDS, LIMITS, validateDetails } from '../../shared/validation';
 import { ApiError, BOOKING_FORM_PREVIEW_URL, BOOKING_FORM_URL, api, downloadFile } from '../lib/api';
 import { bigCelebration } from '../lib/celebrate';
+import { AsciiArt, art } from './ascii/AsciiArt';
+import { DesignPicker } from './ascii/DesignSwitcher';
+import { Glyph } from './ascii/Glyph';
 import { Spinner } from './icons';
 import { SectionHeading } from './SectionHeading';
 import { useToast } from './Toasts';
 
-/** A tiny paper booking form that fills in as people order. */
+const MENU_ART = {
+  lines: art`
+ .--------.
+ | MENU   |\
+ | ~~~~~~ ||
+ | ~~~~   ||
+ | ~~~~~  ||
+ '--------'|
+  '--------'
+`,
+  mask: art`
+ wwwwwwwwww
+ w rrrr   ww
+ w kkkkkk ww
+ w kkkk   ww
+ w kkkkk  ww
+ wwwwwwwwwww
+  wwwwwwwwww
+`,
+};
+
+/** The restaurant's form as ASCII paper that fills in as people order. */
 function PaperForm({ orders, rows }: { orders: Order[]; rows: number }) {
   const sorted = [...orders].sort((a, b) => a.name.localeCompare(b.name, 'en-GB', { sensitivity: 'base' }));
+  const edge = '+' + '-'.repeat(24) + '+';
   return (
     <motion.div
       aria-hidden="true"
-      initial={{ rotate: -4, y: 10 }}
+      initial={{ rotate: -3, y: 10 }}
       whileHover={{ rotate: 0, y: -6, scale: 1.03 }}
-      className="mx-auto w-44 rounded-lg bg-[#fdfaf3] p-3 text-night-950 shadow-2xl shadow-black/50"
+      className="mx-auto w-fit rounded-[2px] bg-[#f4f1ea] px-2 py-1.5 font-mono text-[9px] leading-[1.25] text-black shadow-[0_20px_50px_-12px_rgba(0,0,0,0.9)]"
     >
-      <p className="text-center text-[0.5rem] font-black uppercase tracking-wider">Smokehouse &amp; Cellar</p>
-      <p className="mb-2 text-center text-[0.45rem] font-bold uppercase text-slate-500">Christmas booking form</p>
-      <div className="space-y-[3px]">
-        {Array.from({ length: rows }, (_, i) => {
-          const order = sorted[i];
-          return (
-            <div key={i} className="flex h-2.5 items-center gap-1 border-b border-slate-200">
-              <span className="w-14 truncate text-[0.4rem] font-semibold">{order?.name ?? ''}</span>
-              {Array.from({ length: 3 }, (_, j) => (
-                <span key={j} className="flex h-1.5 w-1.5 items-center justify-center border border-slate-300">
-                  {order ? (
-                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1 * j }}>
-                      <Check className="h-1.5 w-1.5 text-pine-700" strokeWidth={4} />
-                    </motion.span>
-                  ) : null}
-                </span>
-              ))}
-            </div>
-          );
-        })}
-      </div>
+      <pre className="ascii m-0">{edge}</pre>
+      <pre className="ascii m-0">{'|  SMOKEHOUSE & CELLAR   |'}</pre>
+      <pre className="ascii m-0 text-holly-700">{'|  xmas booking form     |'}</pre>
+      <pre className="ascii m-0">{edge}</pre>
+      {Array.from({ length: rows }, (_, i) => {
+        const order = sorted[i];
+        const name = (order?.name ?? '_'.repeat(9)).slice(0, 12).padEnd(13, ' ');
+        return (
+          <pre key={i} className="ascii m-0">
+            {'| '}
+            <span className={order ? 'font-bold' : 'text-black/35'}>{name}</span>
+            {[0, 1, 2].map((j) => (
+              <span key={j}>
+                [
+                {order ? (
+                  <motion.span className="inline-block text-holly-700" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.1 * j }}>
+                    x
+                  </motion.span>
+                ) : (
+                  ' '
+                )}
+                ]
+              </span>
+            ))}
+            {' |'}
+          </pre>
+        );
+      })}
+      <pre className="ascii m-0">{edge}</pre>
     </motion.div>
   );
 }
@@ -81,7 +113,7 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
     <form onSubmit={submit} noValidate aria-busy={busy} className="grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2">
       {DETAIL_FIELDS.map((field) => (
         <div key={field.key}>
-          <label htmlFor={`${idPrefix}-${field.key}`} className="mb-1 block text-xs font-bold uppercase tracking-wider text-white/60">
+          <label htmlFor={`${idPrefix}-${field.key}`} className="mb-1 block font-mono text-[0.7rem] font-bold uppercase tracking-wider text-white/60">
             {field.label}
           </label>
           <input
@@ -102,11 +134,11 @@ function DetailsForm({ details, onSaved }: { details: BookingDetails; onSaved(de
         </div>
       ))}
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-        <button type="submit" className="btn-gold" disabled={busy || !dirty}>
-          {busy ? <Spinner /> : dirty ? <Save className="h-5 w-5" aria-hidden="true" /> : <Check className="h-5 w-5" aria-hidden="true" />}
+        <button type="submit" className="btn-frost" disabled={busy || !dirty}>
+          {busy ? <Spinner /> : <Glyph name={dirty ? 'save' : 'saved'} className="text-holly-600" />}
           <span className="relative">{busy ? 'Saving…' : dirty ? 'Save details' : 'Saved'}</span>
         </button>
-        <p className="text-xs text-white/50">Total guests is filled in automatically.</p>
+        <p className="text-[0.7rem] text-white/50">Total guests is filled in automatically.</p>
       </div>
     </form>
   );
@@ -147,7 +179,7 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
     <section id="workshop" aria-labelledby="workshop-title">
       <SectionHeading
         id="workshop-title"
-        icon={Wrench}
+        glyph="workshop"
         title="Santa’s Workshop"
         subtitle="Everyone can grab the menu and generate the finished booking form."
       />
@@ -156,41 +188,39 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
         <div className="grid grid-cols-1 content-start gap-6">
           <motion.div whileHover={{ y: -4 }} className="glass card-pad">
             <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 shrink-0 animate-sway items-center justify-center rounded-2xl bg-holly-500/20 text-holly-400">
-                <BookOpen className="h-7 w-7" aria-hidden="true" />
-              </span>
-              <div>
-                <h3 className="font-display text-2xl">The menu</h3>
-                <p className="text-sm text-white/65">
+              <AsciiArt lines={MENU_ART.lines} mask={MENU_ART.mask} className="shrink-0 animate-float text-[9px] sm:text-[10px]" />
+              <div className="min-w-0">
+                <h3 className="font-display text-3xl leading-none">The menu</h3>
+                <p className="mt-1 text-xs text-white/65">
                   Christmas at the Smokehouse · {formatPrice(PRICE_PER_HEAD)} per person + 10% service.
                 </p>
               </div>
             </div>
             <div className="mt-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               <a href={MENU_PDF_PATH} download={MENU_PDF_FILENAME} className="btn-ghost" aria-label="Download menu">
-                <Download className="h-5 w-5" aria-hidden="true" />
+                <Glyph name="download" className="text-holly-500" />
                 Download
               </a>
               <a href={MENU_PDF_PATH} target="_blank" rel="noopener" className="btn-ghost" aria-label="View menu">
-                <Eye className="h-5 w-5" aria-hidden="true" />
+                <Glyph name="view" className="text-holly-500" />
                 View
               </a>
             </div>
           </motion.div>
 
           <motion.div
-            className={`glass card-pad relative overflow-hidden ${complete ? 'ring-2 ring-gold-400' : ''}`}
-            animate={complete ? { boxShadow: ['0 0 0 #fcd34d00', '0 0 60px #fcd34d55', '0 0 0 #fcd34d00'] } : {}}
+            className={`glass card-pad relative overflow-hidden ${complete ? 'ring-2 ring-white' : ''}`}
+            animate={complete ? { boxShadow: ['0 0 0 #ffffff00', '0 0 60px #ffffff44', '0 0 0 #ffffff00'] } : {}}
             transition={{ duration: 2.4, repeat: Infinity }}
           >
             <div className="grid grid-cols-1 items-center gap-6 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-1">
               <PaperForm orders={orders} rows={Math.max(config.partySize, Math.min(orders.length, config.maxGuests))} />
               <div>
-                <h3 className="flex items-center gap-2 font-display text-2xl">
-                  <FileText className="h-6 w-6 text-gold-300" aria-hidden="true" />
+                <h3 className="flex items-center gap-2 font-display text-3xl leading-none">
+                  <Glyph name="form" className="text-base text-holly-500" />
                   Completed booking form
                 </h3>
-                <p className="mt-1 text-sm text-white/70">
+                <p className="mt-2 text-xs leading-relaxed text-white/70">
                   {complete
                     ? 'Everyone has ordered! The restaurant’s form is filled in and ready to send.'
                     : orders.length === 0
@@ -203,21 +233,21 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
                     onClick={downloadForm}
                     disabled={downloading}
                     aria-busy={downloading}
-                    className={complete ? 'btn-gold' : 'btn-primary'}
+                    className={complete ? 'btn-frost' : 'btn-primary'}
                   >
                     {!complete && <span className="candy-sheen opacity-30" aria-hidden="true" />}
                     <span className="relative inline-flex items-center gap-2">
-                      {downloading ? <Spinner /> : <Download className="h-5 w-5" aria-hidden="true" />}
+                      {downloading ? <Spinner /> : <Glyph name="download" />}
                       {downloading ? 'Elves writing…' : 'Download booking form'}
                     </span>
                   </button>
                   <a href={BOOKING_FORM_PREVIEW_URL} target="_blank" rel="noopener" className="btn-ghost" aria-label="Preview booking form">
-                    <Eye className="h-5 w-5" aria-hidden="true" />
+                    <Glyph name="view" className="text-holly-500" />
                     Preview
                   </a>
                 </div>
-                <p className="mt-3 flex items-start gap-1.5 text-xs text-white/50">
-                  <Info className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <p className="mt-3 flex items-start gap-2 text-[0.7rem] text-white/50">
+                  <Glyph name="info" className="mt-px text-white/60" />
                   The menu asks for choices at least 2 weeks before the booking date.
                 </p>
               </div>
@@ -226,15 +256,22 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
         </div>
 
         <div className="glass card-pad">
-          <h3 className="flex items-center gap-2 font-display text-2xl">
-            <NotebookPen className="h-6 w-6 text-gold-300" aria-hidden="true" />
+          <h3 className="flex items-center gap-2 font-display text-3xl leading-none">
+            <Glyph name="notes" className="text-base text-holly-500" />
             Booking details
           </h3>
-          <p className="mb-4 mt-1 text-sm text-white/65">
-            The top section of the restaurant’s form. Fill in once - anyone can update it.
-          </p>
+          <p className="mb-4 mt-2 text-xs text-white/65">The top section of the restaurant’s form. Fill in once - anyone can update it.</p>
           <DetailsForm details={details} onSaved={onDetailsSaved} />
         </div>
+      </div>
+
+      <div className="glass card-pad mt-6 lg:mt-8">
+        <h3 className="flex items-center gap-2 font-display text-3xl leading-none">
+          <Glyph name="tree" className="text-base text-holly-500" />
+          Pick a backdrop
+        </h3>
+        <p className="mb-4 mt-2 text-xs text-white/65">Three animated ASCII trees - try each one. Your choice is remembered on this device.</p>
+        <DesignPicker />
       </div>
     </section>
   );

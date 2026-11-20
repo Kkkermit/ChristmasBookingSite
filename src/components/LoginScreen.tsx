@@ -1,9 +1,12 @@
-import { Eye, EyeOff, KeyRound, LockOpen } from 'lucide-react';
 import { motion, useAnimationControls } from 'motion/react';
 import { useState, type FormEvent } from 'react';
 import { ApiError, api } from '../lib/api';
 import { celebrate } from '../lib/celebrate';
-import { ChristmasTree } from './decor/ChristmasTree';
+import { AsciiArt } from './ascii/AsciiArt';
+import { Banner } from './ascii/Banner';
+import { BANNER_FEAST, BANNER_XMAS } from './ascii/banners';
+import { Glyph } from './ascii/Glyph';
+import { LOGIN_TREE } from './ascii/tree';
 import { Spinner } from './Spinner';
 
 /**
@@ -36,7 +39,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
 
   return (
     <motion.main
-      className="relative z-10 flex min-h-dvh flex-col items-center px-4 pb-48 pt-28 sm:pb-64"
+      className="relative z-10 flex min-h-dvh flex-col items-center px-4 pb-40 pt-36 sm:pb-48"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
@@ -47,38 +50,46 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
           initial={{ y: 40, opacity: 0, rotate: -3 }}
           animate={{ y: 0, opacity: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 160, damping: 16, delay: 0.1 }}
-          className="glass relative overflow-visible px-6 pb-8 pt-24 text-center sm:px-10"
+          className="glass relative overflow-visible px-6 pb-8 pt-36 text-center sm:px-10"
         >
-          <div className="absolute -top-20 left-1/2 -translate-x-1/2">
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2">
             <motion.div
-              initial={{ scale: 0, rotate: -20 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 12, delay: 0.35 }}
+              initial={{ scale: 0, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 14, delay: 0.35 }}
+              className="relative"
             >
-              <div className="relative">
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-24 rounded-full bg-[radial-gradient(closest-side,rgba(34,197,94,0.35),transparent)]"
-                />
-                <ChristmasTree className="relative h-40 w-36" />
-              </div>
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-[-30%] bottom-0 h-28 rounded-full bg-[radial-gradient(closest-side,rgba(255,43,70,0.28),transparent)]"
+              />
+              <AsciiArt lines={LOGIN_TREE.lines} mask={LOGIN_TREE.mask} twinkle className="relative text-[11px] font-bold sm:text-[12px]" />
             </motion.div>
           </div>
 
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-gold-300">Private · Invite only</p>
-          <h1 className="mt-2 font-display text-4xl leading-tight sm:text-5xl">
-            <span className="text-candy">Christmas Feast</span>
-            <br />
-            <span className="text-white">2026</span>
+          <p className="font-mono text-[0.7rem] font-bold uppercase tracking-[0.3em] text-holly-400">
+            <span className="text-white/40">[</span> private · invite only <span className="text-white/40">]</span>
+          </p>
+          <h1 className="mt-4 flex flex-col items-center gap-1.5">
+            <span className="sr-only">Christmas Feast 2026</span>
+            <Banner lines={BANNER_XMAS} maxPx={13} gutter="6rem" className="text-holly-500 drop-shadow-[0_0_14px_rgba(255,43,70,0.45)]" />
+            <Banner lines={BANNER_FEAST} maxPx={13} gutter="6rem" delay={200} className="text-white" />
+            <span aria-hidden="true" className="mt-1 flex items-center gap-3 font-display text-3xl leading-none text-holly-400">
+              <span className="font-mono text-sm text-white/40">*~*</span>
+              2026
+              <span className="font-mono text-sm text-white/40">*~*</span>
+            </span>
           </h1>
-          <p className="mt-3 text-white/70">Say the magic word to get in.</p>
+          <p className="mt-4 text-sm text-white/65">
+            <span className="text-holly-500">&gt;</span> say the magic word to get in<span className="animate-blink">_</span>
+          </p>
 
           <form onSubmit={submit} className="mt-7 space-y-3 text-left" noValidate aria-busy={busy}>
-            <label htmlFor="password" className="block text-sm font-semibold text-white/80">
+            <label htmlFor="password" className="block font-mono text-xs font-bold uppercase tracking-[0.2em] text-white/70">
               Password
             </label>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gold-300" aria-hidden="true" />
+              <Glyph name="key" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-holly-500" />
               <input
                 id="password"
                 name="password"
@@ -87,7 +98,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`field pl-12 pr-14 ${error ? 'field-error' : ''}`}
+                className={`field pl-14 pr-14 ${error ? 'field-error' : ''}`}
                 placeholder="The magic word…"
                 aria-invalid={Boolean(error)}
                 aria-describedby={error ? 'password-error' : undefined}
@@ -95,10 +106,10 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
               <button
                 type="button"
                 onClick={() => setShow((s) => !s)}
-                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+                className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-[3px] text-white/70 hover:bg-white/10 hover:text-white"
                 aria-label={show ? 'Hide password' : 'Show password'}
               >
-                {show ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                <Glyph name={show ? 'eyeOff' : 'eye'} className="text-sm" />
               </button>
             </div>
             {error && (
@@ -112,10 +123,10 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
                 {error}
               </motion.p>
             )}
-            <button type="submit" className="btn-primary w-full text-lg" disabled={!password || busy}>
+            <button type="submit" className="btn-primary w-full text-sm" disabled={!password || busy}>
               <span className="candy-sheen opacity-40" aria-hidden="true" />
               <span className="relative inline-flex items-center gap-2">
-                {busy ? <Spinner /> : <LockOpen className="h-5 w-5" aria-hidden="true" />}
+                {busy ? <Spinner /> : <Glyph name="unlock" />}
                 {busy ? 'Checking the list…' : 'Unlock the grotto'}
               </span>
             </button>

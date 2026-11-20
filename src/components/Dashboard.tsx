@@ -1,4 +1,3 @@
-import { ListChecks, Pencil, Send, UserRound, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useCallback, useRef, useState } from 'react';
 import type { Order } from '../../shared/types';
@@ -7,6 +6,8 @@ import { useBookingData } from '../hooks/useBookingData';
 import { ApiError, api } from '../lib/api';
 import { bigCelebration, celebrate } from '../lib/celebrate';
 import { forgetMyOrder, myOrderIds, rememberMyOrder } from '../lib/mine';
+import { Glyph, type GlyphName } from './ascii/Glyph';
+import { Reveal } from './ascii/Reveal';
 import { ConfirmDialog } from './ConfirmDialog';
 import { Header } from './Header';
 import { Hero } from './Hero';
@@ -28,29 +29,33 @@ function revealOrder(id: string) {
 }
 
 function HowItWorks({ partySize }: { partySize: number }) {
-  const steps: Array<{ Icon: LucideIcon; text: string }> = [
-    { Icon: UserRound, text: 'Pop your name in' },
-    { Icon: UtensilsCrossed, text: 'Pick a starter, main and dessert' },
-    { Icon: Send, text: 'Send it to Santa - it appears on the Nice List' },
-    { Icon: Pencil, text: 'Edit or delete any time before the deadline' },
-    { Icon: ListChecks, text: `Once all ${partySize} are in, download the filled booking form` },
+  const steps: Array<{ glyph: GlyphName; text: string }> = [
+    { glyph: 'user', text: 'Pop your name in' },
+    { glyph: 'order', text: 'Pick a starter, main and dessert' },
+    { glyph: 'send', text: 'Send it to Santa - it appears on the Nice List' },
+    { glyph: 'edit', text: 'Edit or delete any time before the deadline' },
+    { glyph: 'download', text: `Once all ${partySize} are in, download the filled booking form` },
   ];
   return (
     <div className="glass card-pad">
-      <h2 className="font-display text-2xl">How it works</h2>
-      <ol className="mt-4 space-y-3">
+      <h2 className="font-display text-3xl leading-none">
+        <span className="text-holly-500">$</span> how-it-works
+      </h2>
+      <ol className="mt-5 space-y-3">
         {steps.map((step, i) => (
           <motion.li
             key={step.text}
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.3 + i * 0.12 }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 text-sm"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-gold-300">
-              <step.Icon className="h-5 w-5" aria-hidden="true" />
+            <span className="flex h-10 w-12 shrink-0 items-center justify-center rounded-[3px] border border-white/15 bg-black text-holly-500">
+              <Glyph name={step.glyph} />
             </span>
-            <span className="text-white/80">{step.text}</span>
+            <span className="text-white/80">
+              <span className="text-white/35">{String(i + 1).padStart(2, '0')}.</span> {step.text}
+            </span>
           </motion.li>
         ))}
       </ol>
@@ -140,7 +145,7 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative z-10">
       <Header onLogout={logout} loggingOut={loggingOut} active={activeSection} />
-      <main className="mx-auto max-w-6xl px-4 pb-72 sm:pb-80">
+      <main className="mx-auto max-w-6xl px-4 pb-52 sm:pb-56">
         {!state && error && <ErrorState error={error} onRetry={() => void reload()} retrying={refreshing} />}
         {!state && !error && <DashboardSkeleton />}
         {state && (
@@ -148,11 +153,7 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
             <Hero config={state.config} orders={state.orders} onDeadline={refresh} />
 
             <section id="order" ref={formRef} aria-labelledby="order-title" className="mt-16 sm:mt-20">
-              <SectionHeading
-                id="order-title"
-                icon={UtensilsCrossed}
-                title={editing ? 'Change of heart?' : 'Place your order'}
-              />
+              <SectionHeading id="order-title" glyph="order" title={editing ? 'Change of heart?' : 'Place your order'} />
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-start lg:gap-8">
                 <OrderForm
                   config={state.config}
@@ -168,7 +169,7 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
               </div>
             </section>
 
-            <div id="nice-list" className="mt-16 sm:mt-20">
+            <Reveal id="nice-list" className="mt-16 sm:mt-20">
               <NiceList
                 orders={state.orders}
                 mine={mine}
@@ -186,11 +187,11 @@ export function Dashboard({ onLoggedOut }: { onLoggedOut(): void }) {
                   <Tally orders={state.orders} />
                 </div>
               )}
-            </div>
+            </Reveal>
 
-            <div className="mt-16 sm:mt-20">
+            <Reveal className="mt-16 sm:mt-20">
               <Workshop config={state.config} orders={state.orders} details={state.details} onDetailsSaved={setDetails} />
-            </div>
+            </Reveal>
           </>
         )}
       </main>

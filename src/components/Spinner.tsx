@@ -1,10 +1,18 @@
-import { LoaderCircle } from 'lucide-react';
-
-/** Kept separate from icons.tsx so the public login page never pulls in the menu. */
-export function Spinner({ className = 'h-5 w-5', label }: { className?: string; label?: string }) {
+/**
+ * ASCII spinner: | / - \ frames, animated in CSS (steps), no JavaScript.
+ * Kept separate from the menu code so the public login page can use it.
+ */
+export function Spinner({ className = '', label }: { className?: string; label?: string }) {
   return (
     <>
-      <LoaderCircle className={`${className} animate-spin`} aria-hidden="true" />
+      <span aria-hidden="true" className={`inline-block h-[1em] w-[1ch] overflow-hidden align-[-0.125em] font-mono font-bold leading-none ${className}`}>
+        <span className="flex animate-[spinner-frames_0.5s_steps(4)_infinite] flex-col">
+          <span>|</span>
+          <span>/</span>
+          <span>-</span>
+          <span>\</span>
+        </span>
+      </span>
       {label && <span className="sr-only">{label}</span>}
     </>
   );

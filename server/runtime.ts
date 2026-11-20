@@ -1,6 +1,8 @@
+import { waitUntil } from '@vercel/functions';
 import { createApp, type Handler } from './app.js';
 import { BOOKING_FORM_TEMPLATE_BASE64 } from './assets/booking-form-template.js';
 import { ConfigError, loadConfig } from './config.js';
+import { createDiscordNotifier } from './notify.js';
 import { chooseStore, createStore } from './store/index.js';
 
 let templateBytes: Uint8Array | null = null;
@@ -21,7 +23,9 @@ function getApp(): Promise<Handler> {
   app ??= (async () => {
     const config = loadConfig(process.env);
     const store = await createStore(chooseStore(process.env, config.isProduction));
-    return createApp({ config, store, loadTemplate });
+    const notify = createDiscordNotifier(process.env.DISCORD_WEBHOOK_URL);
+    if (notify) console.log('[discord] order notifications on');
+    return createApp({ config, store, loadTemplate, notify, background: waitUntil });
   })().catch((err) => {
     app = null; // retry on the next request (e.g. a transient Redis outage)
     throw err;

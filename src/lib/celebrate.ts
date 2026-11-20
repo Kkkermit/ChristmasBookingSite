@@ -2,17 +2,13 @@ import confetti from 'canvas-confetti';
 
 let shapes: confetti.Shape[] | null = null;
 
-function festiveShapes(): confetti.Shape[] {
+/** ASCII confetti: * + o x # ~ characters in red, white and gold (text shapes carry their own colour). */
+function asciiShapes(): confetti.Shape[] {
   if (!shapes) {
     try {
-      shapes = [
-        // star
-        'M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3l-6.2 3.6 1.6-7L2 9.2l7.1-.6z',
-        // tree
-        'M12 1 5 11h3.5L4 18h16l-4.5-7H19z',
-        // bauble
-        'M10 2h4v2.2a8 8 0 1 1-4 0z',
-      ].map((path) => confetti.shapeFromPath({ path }));
+      shapes = ['#ff2b46', '#ffffff', '#ff2b46', '#ffdf7e'].flatMap((color) =>
+        ['*', '+', 'o', 'x', '#', '~'].map((text) => confetti.shapeFromText({ text, scalar: 2, color, fontFamily: '"JetBrains Mono", monospace' })),
+      );
     } catch {
       shapes = [];
     }
@@ -20,18 +16,18 @@ function festiveShapes(): confetti.Shape[] {
   return shapes;
 }
 
-const COLOURS = ['#f43f5e', '#22c55e', '#fcd34d', '#ffffff', '#38bdf8'];
+const COLOURS = ['#ff2b46', '#ffffff', '#ffa3ae', '#ffdf7e', '#ff5a6e'];
 
-/** A festive confetti + emoji burst. Respects prefers-reduced-motion. */
+/** A red and white confetti burst of ASCII characters. Respects prefers-reduced-motion. */
 export function celebrate(origin: { x: number; y: number } = { x: 0.5, y: 0.6 }) {
   if (typeof window === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
   try {
     const base = { origin, disableForReducedMotion: true, zIndex: 80 };
-    void confetti({ ...base, particleCount: 90, spread: 80, startVelocity: 42, colors: COLOURS });
-    const emoji = festiveShapes();
-    if (emoji.length) {
-      void confetti({ ...base, particleCount: 30, spread: 110, startVelocity: 36, scalar: 1.6, shapes: emoji, colors: COLOURS });
+    const ascii = asciiShapes();
+    if (ascii.length) {
+      void confetti({ ...base, particleCount: 70, spread: 95, startVelocity: 40, scalar: 2, shapes: ascii, colors: COLOURS, flat: true });
     }
+    void confetti({ ...base, particleCount: 50, spread: 70, startVelocity: 45, scalar: 0.8, shapes: ['square'], colors: COLOURS });
   } catch {
     // Canvas not available (e.g. tests) - no confetti, no problem.
   }

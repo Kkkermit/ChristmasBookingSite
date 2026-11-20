@@ -4,9 +4,9 @@
 import { MotionConfig } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Backdrop } from './components/decor/Backdrop';
-import { Forest } from './components/decor/Forest';
-import { Snowfall } from './components/decor/Snowfall';
+import { Backdrop } from './components/ascii/Backdrop';
+import { DesignSwitcher } from './components/ascii/DesignSwitcher';
+import { FooterScene } from './components/ascii/FooterScene';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginScreen } from './components/LoginScreen';
 import { OfflineBanner } from './components/states';
@@ -18,14 +18,14 @@ function LoginPage() {
     <MotionConfig reducedMotion="user">
       <ToastProvider>
         <div className="relative min-h-dvh overflow-x-clip">
-          <Backdrop moon />
-          <Snowfall />
+          <Backdrop />
           <OfflineBanner position="top-4" />
           <ErrorBoundary>
             {/* Load the real app once the session cookie is set. */}
             <LoginScreen onSuccess={() => setTimeout(() => window.location.replace('/'), 450)} />
           </ErrorBoundary>
-          <Forest />
+          <FooterScene />
+          <DesignSwitcher className="fixed right-3 top-3 z-20" />
         </div>
       </ToastProvider>
     </MotionConfig>

@@ -4,6 +4,9 @@ A private, password-protected site where the 12 of us pick our **starter, main a
 Smokehouse & Cellar Christmas meal. Once everyone has ordered, anyone can download the restaurant's own
 **booking form PDF, already filled in** — names, ticks and allergies — ready to send.
 
+It looks like a terminal: pure black, candy-cane red and frost white, with every picture and icon drawn in
+**ASCII** and an animated ASCII Christmas tree in the backdrop (three designs to pick from).
+
 Built with **Vite + React + TypeScript + Tailwind CSS v4**, animated with **Motion**, with a single
 **Vercel Function** API backed by **Supabase Postgres**, and Vercel Routing Middleware that hides the
 whole site from anyone without the password.
@@ -27,8 +30,18 @@ whole site from anyone without the password.
 - 🧾 **Auto-filled booking form** — the restaurant's PDF filled in alphabetically, with the header details
   (lead booker, phone, date, time…) and total guests. It stays editable for last-minute tweaks.
 - 📖 **Menu download** for everyone who's logged in.
-- ❄️ Snowfall, fairy lights, twinkling trees, a waving snowman, a sleigh fly-by, confetti… and it all
-  calms down for anyone with "reduce motion" switched on.
+- 🎄 **Animated ASCII tree backdrop, three designs** — pick one in *Santa's Workshop* (or the `tree 1 2 3`
+  switch on the login page, or add `?tree=1`, `2` or `3` to any URL). The choice is remembered per device.
+  1. **Classic** — a hand-typed tree whose lights switch on, top to bottom, as you scroll, with ASCII snow.
+  2. **3D Spiral** — a spinning 3D cone tree wrapped in a red-and-white candy-cane ribbon; scrolling spins it
+     and winds more ribbon on.
+  3. **Code Rain** — red and white character rain that lights the tree up as it falls; scroll faster and it pours.
+- 🔤 **Everything in ASCII** — FIGlet title banners that decode themselves, `( )`/`(*)` radio buttons, dish
+  pictures, a `[====>....]` progress bar, `[####...]` kitchen-tally bars, ticket-style order cards, an ASCII
+  sleigh fly-by, string lights in the header, a snowy ASCII village along the bottom, ASCII confetti and a
+  coloured ASCII tree in the browser console. All of it calms down with "reduce motion" switched on.
+- 💬 **Discord notifications (optional)** — every new, changed or removed order is posted to a Discord channel
+  with everything the person filled in (see below).
 - 📱 Fully responsive, with a thumb-friendly nav on phones.
 
 ## Deployment
@@ -42,6 +55,20 @@ Environment variables on Vercel (Production + Preview, all *sensitive*):
 | ---------------- | --------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`   | Supabase pooler URL for the least-privilege `xmas_app` role (see `db/migrations`).            |
 | `SESSION_SECRET` | Long random string used to sign login cookies.                                                 |
+
+### Discord notifications (optional)
+
+Each time someone places, edits or removes an order, a message goes to a Discord channel: their name,
+starter, main, dessert (with options such as gluten-free soup or ice cream), allergies/requests, what changed
+on an edit, and how many of the 12 have ordered — plus a 🎉 message when the last person orders.
+
+1. In Discord: **Server Settings → Integrations → Webhooks → New Webhook**, choose the channel, then
+   **Copy Webhook URL**.
+2. In Vercel: **Project → Settings → Environment Variables**, add `DISCORD_WEBHOOK_URL` with that URL
+   (mark it *Sensitive*, Production + Preview), then **redeploy**.
+
+Leave it unset to turn notifications off. Only real Discord webhook URLs are accepted, nobody can `@everyone`
+through a name or note, and if Discord is down the order still saves — the message is sent in the background.
 
 To set up from scratch: create a Supabase project, run `db/migrations/001_init.sql`, create the
 `xmas_app` role and run `002_app_role.sql`, then import this repo into Vercel and add the two variables.
@@ -67,6 +94,7 @@ To change it, add an environment variable in Vercel and redeploy (this also logs
 | `PARTY_SIZE`      | `12`                                     | How many orders we're waiting for.                         |
 | `MAX_GUESTS`      | `18`                                     | Hard cap — the booking form has 18 rows.                   |
 | `REDIS_URL`       | —                                        | Use any `redis://`/`rediss://` server instead of Postgres. |
+| `DISCORD_WEBHOOK_URL` | —                                    | Post every order change to Discord (see above).            |
 
 ## Security & privacy
 
@@ -118,6 +146,7 @@ db/migrations/          Postgres schema and least-privilege role
 server/                 API: routing, auth, config, storage (Postgres/Redis/file), PDF filling
 shared/                 Menu, types and validation shared by the site and the API
 src/                    React app (main.tsx = the app, login.tsx = the public login page)
+src/components/ascii/   ASCII art: tree generator, the three backdrops, banners, glyphs, sleigh, village
 public/files/           The restaurant's menu PDF (only served after logging in)
 tests/                  API, auth, PDF, storage and validation tests
 scripts/                Password hashing and PDF template tools

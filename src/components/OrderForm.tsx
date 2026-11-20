@@ -1,4 +1,3 @@
-import { Ban, Check, ChefHat, Lock, RotateCcw, Save, Send, TriangleAlert, UserRound, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useId, useState, type FormEvent } from 'react';
 import {
@@ -14,7 +13,9 @@ import {
 import type { Order, OrderInput, PublicConfig } from '../../shared/types';
 import { LIMITS, nameKey, validateOrderInput } from '../../shared/validation';
 import { ApiError, api } from '../lib/api';
-import { DietaryBadges, DishIcon, Spinner } from './icons';
+import { Glyph } from './ascii/Glyph';
+import { ART_LOCK, ART_TABLE_FULL } from './ascii/pieces';
+import { DietaryBadges, DishArt, DishGlyph, Spinner } from './icons';
 import { StatePanel } from './states';
 import { useToast } from './Toasts';
 
@@ -78,37 +79,35 @@ function DishCard({
 }) {
   return (
     <label
-      className={`group relative flex cursor-pointer select-none gap-3 rounded-2xl border p-3.5 transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.985] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
+      className={`group relative flex cursor-pointer select-none gap-3 rounded-[3px] border p-3.5 transition-[background-color,border-color,box-shadow,transform] duration-200 active:scale-[0.985] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-holly-400 ${
         checked
-          ? 'border-gold-400 bg-gold-400/15 shadow-lg shadow-gold-500/15'
-          : 'border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10'
+          ? 'border-white bg-white/[0.07] shadow-[0_0_26px_-10px_rgba(255,255,255,0.7)]'
+          : 'border-white/12 bg-black/50 hover:border-white/35 hover:bg-white/[0.04]'
       }`}
     >
       <ToggleRadio name={name} value={dish.id} checked={checked} onSelect={onSelect} onClear={onClear} />
       <motion.span
         aria-hidden="true"
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-colors duration-200 ${
-          checked ? 'bg-gold-400 text-night-950' : 'bg-white/10 text-gold-300 group-hover:bg-white/15'
+        className={`flex h-14 w-[4.5rem] shrink-0 items-center justify-center rounded-[2px] border transition-colors duration-200 ${
+          checked ? 'border-holly-500/70 bg-holly-500/10 text-holly-400' : 'border-white/10 bg-black text-white/70 group-hover:text-white'
         }`}
-        animate={checked ? { rotate: [0, -10, 8, 0], scale: [1, 1.12, 1] } : { rotate: 0, scale: 1 }}
+        animate={checked ? { rotate: [0, -6, 5, 0], scale: [1, 1.08, 1] } : { rotate: 0, scale: 1 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
       >
-        <DishIcon icon={dish.icon} className="h-6 w-6" />
+        <DishArt icon={dish.icon} className="text-[10px] font-bold" />
       </motion.span>
       <span className="min-w-0 flex-1">
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-7">
-          <span className="font-bold leading-tight">{dish.name}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
+          <span className="text-sm font-bold leading-tight">{dish.name}</span>
           <DietaryBadges dietary={dish.dietary} />
         </span>
-        <span className="mt-1 block text-[0.8rem] leading-snug text-white/60">{dish.description}</span>
+        <span className="mt-1 block text-[0.75rem] leading-snug text-white/55">{dish.description}</span>
       </span>
       <span
         aria-hidden="true"
-        className={`absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full transition-all duration-200 ${
-          checked ? 'scale-100 bg-gold-400 text-night-950 opacity-100' : 'scale-50 opacity-0'
-        }`}
+        className={`absolute right-3 top-3 font-mono text-sm font-bold transition-colors duration-200 ${checked ? 'text-holly-500' : 'text-white/30'}`}
       >
-        <Check className="h-4 w-4" strokeWidth={3} />
+        {checked ? '(*)' : '( )'}
       </span>
     </label>
   );
@@ -139,12 +138,12 @@ function OptionPicker({
       className="overflow-hidden"
       aria-describedby={error ? errorId : undefined}
     >
-      <div className={`mt-3 rounded-2xl border p-3 ${error ? 'border-holly-400/60 bg-holly-500/10' : 'border-gold-400/30 bg-gold-400/5'}`}>
+      <div className={`mt-3 rounded-[3px] border border-dashed p-3 ${error ? 'border-holly-400/70 bg-holly-500/10' : 'border-white/25 bg-white/[0.03]'}`}>
         <legend className="sr-only">
           {dish.name}: {options.question}
         </legend>
-        <p className="mb-2 text-sm font-semibold text-gold-300" aria-hidden="true">
-          {dish.shortName} · {options.question}
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-white/75" aria-hidden="true">
+          <span className="text-holly-500">&gt;</span> {dish.shortName} · {options.question}
         </p>
         <div className="flex flex-wrap gap-2">
           {options.choices.map((choice) => {
@@ -152,8 +151,8 @@ function OptionPicker({
             return (
               <label
                 key={choice.id}
-                className={`inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
-                  checked ? 'border-gold-400 bg-gold-400 text-night-950' : 'border-white/15 bg-white/5 hover:bg-white/10'
+                className={`inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-[3px] border px-4 py-2 text-sm font-bold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-holly-400 ${
+                  checked ? 'border-white bg-white text-black' : 'border-white/20 bg-black/50 hover:border-white/45'
                 }`}
               >
                 <ToggleRadio
@@ -164,7 +163,9 @@ function OptionPicker({
                   // Unselecting falls back to the menu's default (e.g. standard soup), or to nothing.
                   onClear={() => onChange(options.defaultChoice ?? '')}
                 />
-                {checked && <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />}
+                <span aria-hidden="true" className={`font-mono ${checked ? 'text-holly-600' : 'text-white/35'}`}>
+                  {checked ? '(*)' : '( )'}
+                </span>
                 {choice.label}
               </label>
             );
@@ -204,11 +205,11 @@ function CoursePicker({
   return (
     <fieldset aria-describedby={error ? `${idPrefix}-${course.id}-error` : undefined}>
       <legend className="mb-3 flex w-full items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-holly-500 to-holly-600 font-display text-lg text-white shadow-lg shadow-holly-600/30">
-          {index}
+        <span className="flex h-9 shrink-0 items-center justify-center rounded-[3px] bg-holly-600 px-2 font-mono text-sm font-bold text-white shadow-[0_0_18px_-4px_rgba(255,43,70,0.8)]">
+          0{index}
         </span>
-        <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">{course.title}</span>
-        {course.skippable && <span className="shrink-0 text-xs font-semibold text-white/50">optional</span>}
+        <span className="min-w-0 flex-1 font-display text-[1.9rem] leading-none sm:text-[2.2rem]">{course.title}</span>
+        {course.skippable && <span className="shrink-0 font-mono text-[0.7rem] uppercase tracking-wider text-white/45">[optional]</span>}
       </legend>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {course.dishes.map((dish) => (
@@ -224,8 +225,8 @@ function CoursePicker({
       </div>
       {course.skippable && (
         <label
-          className={`mt-3 inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-xl border border-dashed px-4 py-2 text-sm font-semibold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-4 has-[input:focus-visible]:ring-gold-400/60 ${
-            value === SKIP ? 'border-gold-400 bg-gold-400/15 text-gold-300' : 'border-white/20 text-white/60 hover:border-white/40 hover:text-white'
+          className={`mt-3 inline-flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-[3px] border border-dashed px-4 py-2 text-sm font-bold transition-colors duration-200 active:scale-[0.97] has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-holly-400 ${
+            value === SKIP ? 'border-white bg-white text-black' : 'border-white/25 text-white/60 hover:border-white/50 hover:text-white'
           }`}
         >
           <ToggleRadio
@@ -235,7 +236,9 @@ function CoursePicker({
             onSelect={() => onPick(SKIP)}
             onClear={() => onPick('')}
           />
-          <Ban className="h-4 w-4" aria-hidden="true" />
+          <span aria-hidden="true" className={`font-mono ${value === SKIP ? 'text-holly-600' : 'text-white/35'}`}>
+            {value === SKIP ? '(*)' : '( )'}
+          </span>
           No {course.singular} for me
         </label>
       )}
@@ -263,31 +266,38 @@ function CoursePicker({
 
 function PlatePreview({ values }: { values: OrderInput }) {
   return (
-    <div className="flex items-center justify-center gap-2 sm:gap-3" aria-hidden="true">
+    <div className="flex items-center justify-center gap-1 font-mono sm:gap-3" aria-hidden="true">
       {COURSES.map((course, i) => {
         const value = values[course.id];
         const dish = findDish(course.id, value);
         return (
-          <div key={course.id} className="flex items-center gap-2 sm:gap-3">
-            {i > 0 && <span className="text-white/30">→</span>}
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white/80 bg-gradient-to-br from-white to-slate-200 text-night-800 shadow-[inset_0_-4px_8px_rgba(0,0,0,0.15)] sm:h-16 sm:w-16">
-              <AnimatePresence mode="popLayout">
-                <motion.span
-                  key={value || 'empty'}
-                  initial={{ scale: 0, rotate: -90 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  exit={{ scale: 0, rotate: 90 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 15 }}
-                >
-                  {dish ? (
-                    <DishIcon icon={dish.icon} className="h-7 w-7 text-holly-600" />
-                  ) : value === SKIP ? (
-                    <Ban className="h-6 w-6 text-slate-400" />
-                  ) : (
-                    <span className="text-base font-bold text-slate-400">?</span>
-                  )}
-                </motion.span>
-              </AnimatePresence>
+          <div key={course.id} className="flex items-center gap-1 sm:gap-3">
+            {i > 0 && <span className="text-sm text-holly-500">-&gt;</span>}
+            <div className="flex flex-col items-center text-[11px] leading-[1.15] text-white/70 sm:text-[13px]">
+              <span>.-----.</span>
+              <span className="flex">
+                (
+                <AnimatePresence mode="popLayout">
+                  <motion.span
+                    key={value || 'empty'}
+                    className="inline-flex w-[5ch] justify-center"
+                    initial={{ scale: 0, rotate: -90 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    exit={{ scale: 0, rotate: 90 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+                  >
+                    {dish ? (
+                      <DishGlyph icon={dish.icon} className="text-holly-500" />
+                    ) : value === SKIP ? (
+                      <span className="text-white/40">-</span>
+                    ) : (
+                      <span className="text-white/35">?</span>
+                    )}
+                  </motion.span>
+                </AnimatePresence>
+                )
+              </span>
+              <span>&apos;-----&apos;</span>
             </div>
           </div>
         );
@@ -416,7 +426,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
 
   if (!config.ordersOpen) {
     return (
-      <StatePanel icon={Lock} title="Orders are closed" tone="warning">
+      <StatePanel art={ART_LOCK} title="Orders are closed" tone="warning">
         The deadline has passed, so the list is locked. Grab the completed booking form from Santa&apos;s Workshop below.
       </StatePanel>
     );
@@ -424,7 +434,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
 
   if (full) {
     return (
-      <StatePanel icon={ChefHat} title="The table is full!" tone="warning">
+      <StatePanel art={ART_TABLE_FULL} title="The table is full!" tone="warning">
         The booking form only has room for {config.maxGuests} guests. Edit an existing order if something needs changing.
       </StatePanel>
     );
@@ -435,7 +445,7 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
       onSubmit={submit}
       noValidate
       aria-busy={busy}
-      className={`glass card-pad relative space-y-8 ${editing ? 'ring-2 ring-gold-400/70' : ''}`}
+      className={`glass card-pad relative space-y-8 ${editing ? 'ring-2 ring-white/80' : ''}`}
       aria-label={editing ? `Edit ${editing.name}'s order` : 'Place your order'}
     >
       <AnimatePresence>
@@ -444,15 +454,17 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold-400/40 bg-gold-400/10 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 rounded-[3px] border border-white/40 bg-white/[0.06] px-4 py-3"
           >
-            <p className="font-semibold text-gold-300">Editing {editing.name}&apos;s order</p>
+            <p className="text-sm font-bold">
+              <span aria-hidden="true" className="text-holly-500">[~] </span>Editing {editing.name}&apos;s order
+            </p>
             <button
               type="button"
-              className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-white/80 hover:bg-white/10 hover:text-white"
+              className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-[3px] px-2 text-xs font-bold uppercase tracking-wider text-white/75 hover:bg-white/10 hover:text-white"
               onClick={onCancelEdit}
             >
-              <X className="h-4 w-4" aria-hidden="true" />
+              <Glyph name="back" className="text-holly-500" />
               Cancel editing
             </button>
           </motion.div>
@@ -461,10 +473,10 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
 
       <div>
         <label htmlFor={`${idPrefix}-name`} className="mb-2 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pine-500 to-pine-700 shadow-lg shadow-pine-700/30">
-            <UserRound className="h-5 w-5" aria-hidden="true" />
+          <span className="flex h-9 shrink-0 items-center justify-center rounded-[3px] border border-white/30 px-2 text-white">
+            <Glyph name="user" className="text-sm" />
           </span>
-          <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">Who&apos;s hungry?</span>
+          <span className="min-w-0 flex-1 font-display text-[1.9rem] leading-none sm:text-[2.2rem]">Who&apos;s hungry?</span>
         </label>
         <input
           id={`${idPrefix}-name`}
@@ -499,11 +511,11 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
 
       <div>
         <label htmlFor={`${idPrefix}-notes`} className="mb-2 flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold-400 to-gold-500 text-night-950 shadow-lg shadow-gold-500/30">
-            <TriangleAlert className="h-5 w-5" aria-hidden="true" />
+          <span className="flex h-9 shrink-0 items-center justify-center rounded-[3px] border border-white/30 px-2 text-holly-400">
+            <Glyph name="warn" className="text-sm" />
           </span>
-          <span className="min-w-0 flex-1 font-display text-xl leading-tight sm:text-2xl">Allergies or requests</span>
-          <span className="shrink-0 text-xs font-semibold text-white/50">optional</span>
+          <span className="min-w-0 flex-1 font-display text-[1.9rem] leading-none sm:text-[2.2rem]">Allergies or requests</span>
+          <span className="shrink-0 font-mono text-[0.7rem] uppercase tracking-wider text-white/45">[optional]</span>
         </label>
         <input
           id={`${idPrefix}-notes`}
@@ -520,29 +532,31 @@ export function OrderForm({ config, orders, editing, onSaved, onCancelEdit, onSt
         </p>
       </div>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5">
-        <p className="mb-3 text-center text-xs font-bold uppercase tracking-widest text-white/60">Your festive plate</p>
+      <div className="rounded-[3px] border border-dashed border-white/20 bg-black/60 p-4 sm:p-5">
+        <p className="mb-3 text-center text-xs font-bold uppercase tracking-[0.2em] text-white/55">
+          <span className="text-holly-500">*</span> Your festive plate <span className="text-holly-500">*</span>
+        </p>
         <PlatePreview values={values} />
-        <p className="mt-3 text-center text-sm text-white/70">{plateSummary(values)}</p>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-xs text-white/45">
+        <p className="mt-3 text-center text-xs text-white/70 sm:text-sm">{plateSummary(values)}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center text-[0.7rem] text-white/45">
           <span>Changed your mind? Tap a chosen dish again to unselect it.</span>
           {hasChoices && (
             <button
               type="button"
               onClick={clearChoices}
-              className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-[3px] px-2 font-bold uppercase tracking-wider text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
-              <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+              <Glyph name="undo" className="text-holly-500" />
               Clear choices
             </button>
           )}
         </div>
       </div>
 
-      <button type="submit" className="btn-primary w-full py-4 text-lg" disabled={busy}>
+      <button type="submit" className="btn-primary w-full py-4 text-base" disabled={busy}>
         <span className="candy-sheen opacity-30" aria-hidden="true" />
         <span className="relative inline-flex items-center gap-2">
-          {busy ? <Spinner /> : editing ? <Save className="h-5 w-5" aria-hidden="true" /> : <Send className="h-5 w-5" aria-hidden="true" />}
+          {busy ? <Spinner /> : <Glyph name={editing ? 'save' : 'send'} />}
           {busy ? 'Wrapping it up…' : editing ? 'Save changes' : 'Send my order to Santa'}
         </span>
       </button>

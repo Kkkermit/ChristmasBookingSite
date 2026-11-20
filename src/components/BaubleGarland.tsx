@@ -3,45 +3,31 @@ import type { Order } from '../../shared/types';
 import { colourFor, initials } from '../lib/format';
 
 /**
- * Progress as a garland of baubles - one per expected guest. Each bauble
- * lights up (with the person's initials) as soon as they place their order.
+ * Progress as an ASCII garland of baubles - one per expected guest. Each
+ * bauble lights up (with the person's initials) as soon as they order.
  *
- * Laid out as an even grid (6 per row on phones, 12 on wider screens). Every
- * cell draws its own scallop of garland, so each row is a continuous string
- * and every bauble hangs from it - however many rows there are.
+ * An even grid (6 per row on phones, 12 on wider screens): every cell draws
+ * its own piece of the garland, so each row is one continuous string.
  */
 export function BaubleGarland({ orders, partySize }: { orders: Order[]; partySize: number }) {
   const slots = Math.max(partySize, orders.length);
   return (
-    // Fixed-width cells in a centred wrap: full rows look like a grid, and a
-    // partial last row (more than 12 guests) stays centred rather than left-aligned.
     <ol className="flex flex-wrap justify-center gap-y-2" aria-label="Who has ordered">
       {Array.from({ length: slots }, (_, i) => {
         const order = orders[i];
         const colour = order ? colourFor(order.name) : undefined;
         return (
-          <li key={i} className="relative flex w-1/6 justify-center pt-2.5 sm:w-1/12">
-            <svg
-              viewBox="0 0 100 20"
-              preserveAspectRatio="none"
-              className="absolute inset-x-0 top-0 h-4 w-full"
-              aria-hidden="true"
-            >
-              <path
-                d="M0 2 Q50 22 100 2"
-                fill="none"
-                stroke="#fcd34d"
-                strokeOpacity="0.6"
-                strokeWidth="1.25"
-                strokeDasharray="3 2"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-            <div
+          <li key={i} className="relative flex w-1/6 flex-col items-center font-mono leading-none sm:w-1/12 lg:w-1/6">
+            <span aria-hidden="true" className="block w-full overflow-hidden whitespace-nowrap text-[11px] text-pine-600">
+              {i % 2 ? '~-~*~-~-~*~-~' : '-~*~-~-~*~-~-'}
+            </span>
+            <span
               className="flex animate-sway flex-col items-center"
               style={{ transformOrigin: 'top center', animationDelay: `${(i % 6) * 0.3}s`, animationDuration: `${3 + (i % 4) * 0.5}s` }}
             >
-              <span className="h-1.5 w-2.5 rounded-sm bg-gold-400/90" aria-hidden="true" />
+              <span aria-hidden="true" className="text-[11px] text-white/35">
+                |
+              </span>
               <AnimatePresence mode="wait" initial={false}>
                 {order ? (
                   <motion.span
@@ -51,13 +37,10 @@ export function BaubleGarland({ orders, partySize }: { orders: Order[]; partySiz
                     animate={{ scale: 1, rotate: 0 }}
                     exit={{ scale: 0 }}
                     transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[0.7rem] font-extrabold text-white sm:h-9 sm:w-9 lg:h-8 lg:w-8 xl:h-9 xl:w-9"
-                    style={{
-                      background: `radial-gradient(circle at 32% 28%, #ffffffcc 0%, ${colour} 28%, ${colour} 62%, #00000099 135%)`,
-                      boxShadow: `0 0 14px ${colour}aa`,
-                    }}
+                    className="flex h-7 items-center whitespace-pre text-[12px] font-extrabold sm:text-[13px]"
+                    style={{ color: colour, textShadow: `0 0 10px ${colour}` }}
                   >
-                    <span aria-hidden="true">{initials(order.name)}</span>
+                    <span aria-hidden="true">({initials(order.name)})</span>
                     <span className="sr-only">{order.name} has ordered</span>
                   </motion.span>
                 ) : (
@@ -65,14 +48,14 @@ export function BaubleGarland({ orders, partySize }: { orders: Order[]; partySiz
                     key={`empty-${i}`}
                     initial={{ scale: 0.6, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-white/30 bg-white/5 text-xs text-white/35 sm:h-9 sm:w-9 lg:h-8 lg:w-8 xl:h-9 xl:w-9"
+                    className="flex h-7 items-center whitespace-pre text-[12px] text-white/30 sm:text-[13px]"
                   >
-                    <span aria-hidden="true">?</span>
+                    <span aria-hidden="true">(..)</span>
                     <span className="sr-only">Waiting for guest {i + 1}</span>
                   </motion.span>
                 )}
               </AnimatePresence>
-            </div>
+            </span>
           </li>
         );
       })}

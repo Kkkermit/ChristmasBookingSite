@@ -1,12 +1,12 @@
-import { Snowflake } from 'lucide-react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useCallback, useEffect, useState } from 'react';
+import { AsciiArt } from './components/ascii/AsciiArt';
+import { Backdrop } from './components/ascii/Backdrop';
+import { FooterScene } from './components/ascii/FooterScene';
+import { HangingOrnaments } from './components/ascii/HangingOrnaments';
+import { ART_SNOWFLAKE } from './components/ascii/pieces';
+import { Sleigh } from './components/ascii/Sleigh';
 import { Dashboard } from './components/Dashboard';
-import { Backdrop } from './components/decor/Backdrop';
-import { Forest } from './components/decor/Forest';
-import { HangingOrnaments } from './components/decor/HangingOrnaments';
-import { Sleigh } from './components/decor/Sleigh';
-import { Snowfall } from './components/decor/Snowfall';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginScreen } from './components/LoginScreen';
 import { OfflineBanner } from './components/states';
@@ -37,30 +37,32 @@ export default function App() {
       <ToastProvider>
         <div className="relative min-h-dvh overflow-x-clip">
           <Backdrop />
-          <Snowfall />
           <HangingOrnaments />
           <Sleigh />
           <OfflineBanner />
           <ErrorBoundary>
-          <AnimatePresence mode="wait">
-            {auth === 'checking' && (
-              <motion.div
-                key="checking"
-                className="relative z-10 flex min-h-dvh items-center justify-center text-ice-300"
-                exit={{ opacity: 0 }}
-                role="status"
-                aria-label="Loading"
-              >
-                <motion.span animate={{ rotate: 360 }} transition={{ duration: 2.4, repeat: Infinity, ease: 'linear' }}>
-                  <Snowflake className="h-14 w-14" aria-hidden="true" />
-                </motion.span>
-              </motion.div>
-            )}
-            {auth === 'signed-out' && <LoginScreen key="login" onSuccess={signedIn} />}
-            {auth === 'signed-in' && <Dashboard key="dashboard" onLoggedOut={signedOut} />}
-          </AnimatePresence>
+            <AnimatePresence mode="wait">
+              {auth === 'checking' && (
+                <motion.div
+                  key="checking"
+                  className="relative z-10 flex min-h-dvh flex-col items-center justify-center gap-3"
+                  exit={{ opacity: 0 }}
+                  role="status"
+                  aria-label="Loading"
+                >
+                  <motion.span animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}>
+                    <AsciiArt lines={ART_SNOWFLAKE.lines} mask={ART_SNOWFLAKE.mask} className="text-xl" />
+                  </motion.span>
+                  <span aria-hidden="true" className="font-mono text-xs uppercase tracking-[0.3em] text-white/50">
+                    loading<span className="animate-blink">_</span>
+                  </span>
+                </motion.div>
+              )}
+              {auth === 'signed-out' && <LoginScreen key="login" onSuccess={signedIn} />}
+              {auth === 'signed-in' && <Dashboard key="dashboard" onLoggedOut={signedOut} />}
+            </AnimatePresence>
           </ErrorBoundary>
-          <Forest />
+          <FooterScene />
         </div>
       </ToastProvider>
     </MotionConfig>

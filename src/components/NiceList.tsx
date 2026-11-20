@@ -1,9 +1,10 @@
-import { Ban, CloudOff, Pencil, RefreshCw, ScrollText, Trash2, TriangleAlert } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { COURSES, SKIP, choiceLabel, findDish, optionField } from '../../shared/menu';
 import type { Order } from '../../shared/types';
 import { colourFor, initials } from '../lib/format';
-import { DishIcon } from './icons';
+import { Glyph } from './ascii/Glyph';
+import { DishGlyph } from './icons';
+import { Spinner } from './Spinner';
 import { SectionHeading } from './SectionHeading';
 import { EmptyState } from './states';
 
@@ -50,36 +51,36 @@ function OrderCard({
         y: 0,
         rotate: 0,
         scale: 1,
-        boxShadow: highlight ? ['0 0 0px #fcd34d00', '0 0 40px #fcd34dcc', '0 0 0px #fcd34d00'] : '0 0 0px #fcd34d00',
+        boxShadow: highlight ? ['0 0 0px #ffffff00', '0 0 40px #ffffffaa', '0 0 0px #ffffff00'] : '0 0 0px #ffffff00',
       }}
       exit={{ opacity: 0, x: 80, rotate: 8, scale: 0.8, transition: { duration: 0.3 } }}
       transition={{ type: 'spring', stiffness: 260, damping: 28, boxShadow: { duration: 1.8 } }}
-      className={`relative flex flex-col overflow-hidden rounded-3xl border bg-night-800/90 p-4 sm:p-5 ${
-        isEditing ? 'border-gold-400' : 'border-white/10'
+      className={`ticks relative flex flex-col overflow-hidden rounded-[4px] border bg-night-800/95 p-4 sm:p-5 ${
+        isEditing ? 'border-white' : 'border-white/12'
       }`}
     >
-      <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: colour }} aria-hidden="true" />
+      <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: colour }} aria-hidden="true" />
+      <p aria-hidden="true" className="-mt-1 mb-2 pl-1 font-mono text-[0.7rem] uppercase tracking-[0.2em] text-white/30">
+        ticket #{String(index + 1).padStart(2, '0')}
+      </p>
       <div className="flex items-start gap-3 pl-1">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white"
-          style={{
-            background: `radial-gradient(circle at 32% 28%, #ffffffcc 0%, ${colour} 30%, ${colour} 65%, #00000088 140%)`,
-            boxShadow: `0 0 16px ${colour}88`,
-          }}
+          className="flex h-11 shrink-0 items-center justify-center whitespace-pre font-mono text-base font-extrabold"
+          style={{ color: colour, textShadow: `0 0 12px ${colour}` }}
           aria-hidden="true"
         >
-          {initials(order.name)}
+          ({initials(order.name)})
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 break-words text-lg font-bold leading-tight">{order.name}</h3>
+          <div className="flex min-h-11 flex-wrap items-center gap-2">
+            <h3 className="min-w-0 break-words font-display text-[1.75rem] leading-none">{order.name}</h3>
             {isMine && (
-              <span className="rounded-full bg-gold-400 px-2 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-wide text-night-950">
+              <span className="rounded-[2px] bg-white px-1.5 py-0.5 font-mono text-[0.7rem] font-extrabold uppercase tracking-wide text-black">
                 You
               </span>
             )}
           </div>
-          <ul className="mt-2 space-y-1.5 text-sm">
+          <ul className="mt-1 space-y-1.5 text-[0.8rem]">
             {COURSES.map((course) => {
               const value = order[course.id];
               const dish = findDish(course.id, value);
@@ -87,9 +88,11 @@ function OrderCard({
               const option = choice?.formNote ? choice.label : '';
               return (
                 <li key={course.id} className="flex items-start gap-2">
-                  <span aria-hidden="true" className="mt-0.5 text-gold-300">
-                    {dish ? <DishIcon icon={dish.icon} className="h-4 w-4" /> : <Ban className="h-4 w-4 text-white/40" />}
-                  </span>
+                  {dish ? (
+                    <DishGlyph icon={dish.icon} className="mt-0.5 text-xs text-holly-500" />
+                  ) : (
+                    <Glyph name="skip" className="mt-0.5 w-[3ch] text-xs text-white/35" />
+                  )}
                   <span className="sr-only">{course.singular}: </span>
                   <span className={value === SKIP ? 'italic text-white/50' : 'text-white/90'}>
                     {choiceLabel(course.id, value)}
@@ -100,8 +103,8 @@ function OrderCard({
             })}
           </ul>
           {order.notes && (
-            <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-gold-400/10 px-3 py-1.5 text-xs font-medium text-gold-300">
-              <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <p className="mt-2 flex items-start gap-2 rounded-[3px] border border-holly-500/40 bg-holly-500/10 px-3 py-1.5 text-xs font-medium text-holly-300">
+              <Glyph name="warn" className="mt-px text-holly-500" />
               <span>
                 <span className="sr-only">Allergies or requests: </span>
                 {order.notes}
@@ -112,17 +115,17 @@ function OrderCard({
       </div>
       {canEdit && (
         <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
-          <button type="button" onClick={onEdit} className="btn-ghost min-h-11 py-2 text-sm" aria-label={`Edit ${order.name}'s order`}>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
+          <button type="button" onClick={onEdit} className="btn-ghost min-h-11 px-3 py-2 text-xs" aria-label={`Edit ${order.name}'s order`}>
+            <Glyph name="edit" className="text-holly-500" />
             Edit
           </button>
           <button
             type="button"
             onClick={onDelete}
-            className="btn min-h-11 border border-holly-400/30 bg-holly-500/10 py-2 text-sm text-holly-400 hover:bg-holly-500/20"
+            className="btn min-h-11 border border-holly-500/40 bg-holly-500/10 px-3 py-2 text-xs text-holly-400 hover:bg-holly-500/20"
             aria-label={`Delete ${order.name}'s order`}
           >
-            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            <Glyph name="delete" />
             Delete
           </button>
         </div>
@@ -147,21 +150,21 @@ export function NiceList({
     <section aria-labelledby="nice-list-title">
       <SectionHeading
         id="nice-list-title"
-        icon={ScrollText}
+        glyph="list"
         title="The Nice List"
         aside={
           <>
-            <span className="hidden text-sm font-semibold text-white/60 min-[400px]:inline">{orders.length} ordered</span>
+            <span className="hidden font-mono text-xs font-bold uppercase tracking-wider text-white/55 min-[400px]:inline">{orders.length} ordered</span>
             {onRefresh && (
               <button
                 type="button"
                 onClick={onRefresh}
                 disabled={refreshing}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:opacity-60"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-[3px] border border-white/20 bg-black/60 text-white/75 transition hover:border-white/50 hover:text-white disabled:opacity-60"
                 aria-label="Refresh the list"
                 title="Refresh"
               >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
+                {refreshing ? <Spinner className="text-holly-500" /> : <Glyph name="refresh" className="text-sm" />}
               </button>
             )}
           </>
@@ -174,9 +177,9 @@ export function NiceList({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="mb-3 flex items-center gap-2 overflow-hidden rounded-2xl border border-gold-400/30 bg-gold-400/10 px-4 py-2 text-sm text-gold-300"
+            className="mb-3 flex items-center gap-2 overflow-hidden rounded-[3px] border border-white/25 bg-white/[0.06] px-4 py-2 text-xs text-white/80"
           >
-            <CloudOff className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <Glyph name="offline" className="text-holly-500" />
             Couldn&apos;t refresh just now - showing the last list we loaded. We&apos;ll keep trying.
           </motion.p>
         )}

@@ -13,6 +13,7 @@ import {
 } from './auth.js';
 import type { ServerConfig } from './config.js';
 import { fillBookingForm } from './pdf.js';
+import type { Notifier, OrderEvent } from './notify.js';
 import { DuplicateNameError, type Store } from './store/types.js';
 
 export type Handler = (request: Request) => Promise<Response>;
@@ -23,6 +24,10 @@ export interface AppDeps {
   store: Store | null;
   loadTemplate: () => Promise<Uint8Array>;
   now?: () => Date;
+  /** Posts order changes somewhere (Discord). Optional. */
+  notify?: Notifier | null;
+  /** Keeps background work alive after the response (Vercel's waitUntil). */
+  background?: (promise: Promise<unknown>) => void;
 }
 
 export const LOGIN_MAX_FAILURES = 10;
@@ -159,6 +164,17 @@ function byCreated(a: Order, b: Order) {
 export function createApp(deps: AppDeps): Handler {
   const { config, store } = deps;
   const now = deps.now ?? (() => new Date());
+
+  /** Fire-and-forget notification: never delays or fails the request. */
+  const announce = (build: () => Promise<OrderEvent>) => {
+    if (!deps.notify) return;
+    const notify = deps.notify;
+    const work = build()
+      .then((event) => notify(event))
+      .catch((err) => console.error('[notify] failed', err instanceof Error ? err.message : String(err)));
+    deps.background?.(work);
+  };
+  const orderCount = async (s: Store) => (await s.listOrders()).length;
   const sessionKey = deriveSessionKey(config.sessionSecret, config.passwordFingerprint);
 
   const ordersOpen = () => now().getTime() <= config.deadline.getTime();
@@ -252,6 +268,7 @@ export function createApp(deps: AppDeps): Handler {
     const stamp = now().toISOString();
     const order: Order = { id: randomUUID(), ...result.value, createdAt: stamp, updatedAt: stamp };
     await saveOrDuplicate(s, order);
+    announce(async () => ({ type: 'created', order, totalOrders: existing.length + 1, partySize: config.partySize }));
     return json(201, { order });
   }
 
@@ -272,13 +289,18 @@ export function createApp(deps: AppDeps): Handler {
     }
     const order: Order = { ...current, ...result.value, updatedAt: now().toISOString() };
     await saveOrDuplicate(s, order);
+    announce(async () => ({ type: 'updated', order, previous: current, totalOrders: await orderCount(s), partySize: config.partySize }));
     return json(200, { order });
   }
 
   async function deleteOrder(id: string): Promise<Response> {
     const s = requireStore();
     requireOpen();
+    const existing = deps.notify ? await s.getOrder(id) : null;
     if (!(await s.deleteOrder(id))) throw new HttpError(404, 'That order no longer exists', 'NOT_FOUND');
+    if (existing) {
+      announce(async () => ({ type: 'deleted', order: existing, totalOrders: await orderCount(s), partySize: config.partySize }));
+    }
     return json(200, { deleted: id });
   }
 
