@@ -32,14 +32,21 @@ whole site from anyone without the password.
 - 📖 **Menu download** for everyone who's logged in.
 - 🎄 **Animated ASCII tree backdrop, three designs** — pick one in *Santa's Workshop* (or the `tree 1 2 3`
   switch on the login page, or add `?tree=1`, `2` or `3` to any URL). The choice is remembered per device.
-  1. **Classic** — a hand-typed tree whose lights switch on, top to bottom, as you scroll, with ASCII snow.
-  2. **3D Spiral** — a spinning 3D cone tree wrapped in a red-and-white candy-cane ribbon; scrolling spins it
-     and winds more ribbon on.
+  Every tree is drawn by a small procedural renderer (`src/components/ascii/engine/`) that shades each
+  character cell — layered drooping branches with needle texture and lighting, snow on the tips, tinsel and
+  bead garlands, glossy baubles with highlights, a faceted star, wrapped presents and snowy ground — at a
+  font size picked for the screen, so it stays detailed from phones to 4K. Glyphs are copied from a
+  pre-rendered atlas at whole device pixels (pin-sharp), and slow devices automatically step down
+  resolution, then frame rate.
+  1. **Classic** — a big detailed tree whose fairy lights switch on, top to bottom, as you scroll, with ASCII snow.
+  2. **3D Spiral** — a 3D tree ray-cast into characters every frame, wrapped in a red-and-white candy-cane
+     ribbon, with baubles and lights that turn with it and a spinning star; scrolling spins it and winds more ribbon on.
   3. **Code Rain** — red and white character rain that lights the tree up as it falls; scroll faster and it pours.
 - 🔤 **Everything in ASCII** — FIGlet title banners that decode themselves, `( )`/`(*)` radio buttons, dish
   pictures, a `[====>....]` progress bar, `[####...]` kitchen-tally bars, ticket-style order cards, an ASCII
-  sleigh fly-by, string lights in the header, a snowy ASCII village along the bottom, ASCII confetti and a
-  coloured ASCII tree in the browser console. All of it calms down with "reduce motion" switched on.
+  sleigh fly-by, shaded ASCII baubles in the margins, string lights in the header, a snowy ASCII village
+  (cottages, lamp posts, a snowman, lit trees) along the bottom, ASCII confetti and a detailed coloured
+  ASCII tree in the browser console. All of it calms down with "reduce motion" switched on.
 - 💬 **Discord notifications (optional)** — every new, changed or removed order is posted to a Discord channel
   with everything the person filled in (see below).
 - 📱 Fully responsive, with a thumb-friendly nav on phones.

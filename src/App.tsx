@@ -36,7 +36,7 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <ToastProvider>
         <div className="relative min-h-dvh overflow-x-clip">
-          <Backdrop />
+          <Backdrop beside={auth === 'signed-out'} />
           <HangingOrnaments />
           <Sleigh />
           <OfflineBanner />
@@ -58,7 +58,7 @@ export default function App() {
                   </span>
                 </motion.div>
               )}
-              {auth === 'signed-out' && <LoginScreen key="login" onSuccess={signedIn} />}
+              {auth === 'signed-out' && <LoginScreen key="login" beside onSuccess={signedIn} />}
               {auth === 'signed-in' && <Dashboard key="dashboard" onLoggedOut={signedOut} />}
             </AnimatePresence>
           </ErrorBoundary>

@@ -165,31 +165,6 @@ export function buildTree(opts: TreeOptions): GeneratedTree {
   };
 }
 
-/** The big tree behind the whole site (design 1). */
-export const BIG_TREE = buildTree({
-  tiers: [6, 7, 8, 9],
-  starts: [0, 4, 7, 10],
-  slope: 1.6,
-  star: 'big',
-  trunk: { width: 5, height: 3 },
-  lightDensity: 0.085,
-  garlands: 4,
-  presents: true,
-  ground: true,
-  seed: 2026,
-});
-
-/** Mid-size tree above the login card and in the console. */
-export const LOGIN_TREE = buildTree({
-  tiers: [4, 5, 6],
-  starts: [0, 2, 3],
-  slope: 1.6,
-  star: 'small',
-  trunk: { width: 3, height: 2 },
-  lightDensity: 0.14,
-  seed: 25,
-});
-
 /** Five rows - the logo in the header. */
 export const LOGO_TREE = buildTree({
   tiers: [4],

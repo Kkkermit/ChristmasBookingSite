@@ -5,7 +5,7 @@ import { formatLongDate, sleepsUntilChristmas } from '../lib/format';
 import { useNow } from '../hooks/useNow';
 import { AsciiArt } from './ascii/AsciiArt';
 import { Banner } from './ascii/Banner';
-import { BANNER_FEAST, BANNER_XMAS, BANNER_YEAR } from './ascii/banners';
+import { BANNER_FEAST, BANNER_XMAS } from './ascii/banners';
 import { Glyph, type GlyphName } from './ascii/Glyph';
 import { ART_LOCK } from './ascii/pieces';
 import { BaubleGarland } from './BaubleGarland';
@@ -69,18 +69,18 @@ export function Hero({ config, orders, onDeadline }: { config: PublicConfig; ord
       {/* A dark halo behind the title so it reads clearly over the backdrop tree. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[-1rem] top-16 h-[30rem] bg-[radial-gradient(ellipse_closest-side,rgba(0,0,0,0.86),rgba(0,0,0,0.55)_55%,rgba(0,0,0,0))] sm:inset-x-[14%] lg:inset-x-[24%] lg:top-20 lg:h-[26rem]"
+        className="pointer-events-none absolute inset-x-[-1rem] top-16 h-[30rem] bg-[radial-gradient(ellipse_closest-side,rgba(0,0,0,0.74),rgba(0,0,0,0.42)_55%,rgba(0,0,0,0))] sm:inset-x-[14%] lg:inset-x-[24%] lg:top-20 lg:h-[26rem]"
       />
       <h1 className="relative mt-8 flex flex-col items-center gap-2 sm:gap-3">
         <span className="sr-only">Christmas Feast 2026</span>
         <span className="animate-glitch">
-          <Banner lines={BANNER_XMAS} maxPx={17} gutter="2.5rem" className="text-holly-500 drop-shadow-[0_0_18px_rgba(255,43,70,0.45)]" />
+          <Banner lines={BANNER_XMAS} maxPx={17} gutter="2.5rem" depth="text-holly-700" className="text-holly-500 drop-shadow-[0_0_18px_rgba(255,43,70,0.45)]" />
         </span>
-        <Banner lines={BANNER_FEAST} maxPx={17} gutter="2.5rem" delay={200} className="text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.25)]" />
-        <span className="mt-1 flex items-center gap-3 text-holly-500">
-          <span aria-hidden="true" className="font-mono text-sm text-white/40">*~*~</span>
-          <Banner lines={BANNER_YEAR} maxPx={10} gutter="2.5rem" delay={400} className="text-holly-400" />
-          <span aria-hidden="true" className="font-mono text-sm text-white/40">~*~*</span>
+        <Banner lines={BANNER_FEAST} maxPx={17} gutter="2.5rem" delay={200} depth="text-white/25" className="text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.25)]" />
+        <span aria-hidden="true" className="mt-1 flex items-center gap-3 font-display text-4xl leading-none text-holly-400 sm:text-5xl">
+          <span className="font-mono text-sm text-white/40">*~*~</span>
+          2026
+          <span className="font-mono text-sm text-white/40">~*~*</span>
         </span>
       </h1>
 

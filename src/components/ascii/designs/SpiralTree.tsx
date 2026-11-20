@@ -1,220 +1,240 @@
 import { memo, useRef } from 'react';
-import { gridMetrics, useCanvasLoop } from '../canvas';
-import { createSnow } from '../snow';
-import { rng } from '../tree';
+import type { Placement } from '../Backdrop';
+import { useCanvasLoop } from '../canvas';
+import { getAtlas, getRamp, glowSprite, rampChar, type Atlas } from '../engine/atlas';
+import { drawScene, treeLayout, type TreeLayout } from '../engine/layout';
+import { random } from '../engine/noise';
+import { ALL_FAMILIES, FAM, code } from '../engine/palette';
+import { LIGHT_HUES, layerWidth, renderTree, starChar, tone, treeGeometry, type TreeGeometry } from '../engine/treeModel';
+import { AsciiSnow } from '../AsciiSnow';
 
-const COLOURS = [
-  '#17733e', // 0 deep green
-  '#1f9a52', // 1 green
-  '#2fc46b', // 2 bright green
-  '#7ff0a8', // 3 highlight
-  '#ff2b46', // 4 red
-  '#ffffff', // 5 white
-  '#ffdf7e', // 6 gold
-  '#b0773c', // 7 bark
-  'rgba(255,255,255,0.45)', // 8 snow on the ground
-  '#ffa3ae', // 9 pink
-];
-const RAMP = '.:-=+*#%@';
-const LIGHT_CHARS = 'oO@*';
-const TIERS = 5;
 const TURNS = 4.2;
+const RIBBON = 0.24; // half-width of the ribbon, radians
 
-interface Light {
-  h: number;
-  theta: number;
-  colour: number;
+interface Spot {
+  s: number;
+  phi: number;
+  kind: number; // hue for lights, family for baubles
   phase: number;
-  ch: string;
+  speed: number;
 }
 
+interface State {
+  layout: TreeLayout | null;
+  g: TreeGeometry | null;
+  atlas: Atlas | null;
+  ramp: string;
+  base: HTMLCanvasElement | null;
+  x0: number;
+  y0: number;
+  rot: number;
+  grow: number;
+  lights: Spot[];
+  baubles: Spot[];
+  rowHW: Float32Array;
+  rowF: Float32Array;
+}
+
+const wrap = (a: number) => a - Math.PI * 2 * Math.round(a / (Math.PI * 2));
+
 /**
- * Design 2: a 3D cone tree rendered as ASCII, spinning slowly, wrapped in a
- * red and white candy-cane ribbon. Scrolling spins it faster, zooms in a
- * little and winds more of the ribbon on; lights switch on as you go.
+ * Design 2: a 3D cone tree ray-cast into characters every frame - lit
+ * needles, a candy-cane ribbon spiralling round it, baubles and lights that
+ * turn with it, and a spinning star. Scrolling spins it faster and winds
+ * more ribbon on; lights come on as you go. The ground, trunk and presents
+ * don't move, so they're drawn once.
  */
-export const SpiralTree = memo(function SpiralTree() {
+export const SpiralTree = memo(function SpiralTree({ placement }: { placement: Placement }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const state = useRef({
+  const st = useRef<State>({
+    layout: null,
+    g: null,
+    atlas: null,
+    ramp: '',
+    base: null,
+    x0: 0,
+    y0: 0,
     rot: 0.6,
-    intro: 0,
-    cw: 8,
-    ch: 16,
-    cols: 0,
-    rows: 0,
-    depth: new Float32Array(0),
-    glyph: new Uint8Array(0),
-    colour: new Uint8Array(0),
-    touched: [] as number[],
-    lights: [] as Light[],
-    snow: createSnow(0.7),
-    chars: [] as string[],
-    lookup: new Map<string, number>(),
-    ramp: [] as number[],
+    grow: 0,
+    lights: [],
+    baubles: [],
+    rowHW: new Float32Array(0),
+    rowF: new Float32Array(0),
   }).current;
 
   useCanvasLoop(ref, {
-    smallFps: 25,
+    maxFps: 40,
+    smallFps: 24,
+    adaptive: true,
     setup(f) {
-      const { cw, ch } = gridMetrics(f.ctx, f.small ? 12 : 14);
-      state.cw = cw;
-      state.ch = ch;
-      state.cols = Math.ceil(f.width / cw);
-      state.rows = Math.ceil(f.height / ch);
-      const n = state.cols * state.rows;
-      state.depth = new Float32Array(n).fill(-1e9);
-      state.glyph = new Uint8Array(n);
-      state.colour = new Uint8Array(n);
-      state.touched = [];
-      // Every glyph the renderer can use, looked up by index.
-      state.chars = Array.from(new Set([...RAMP, ...LIGHT_CHARS, '|', '*', '+', 'x', '\\', '/', '-', '.', '=', '#', '~', 'X']));
-      state.lookup = new Map(state.chars.map((c, i) => [c, i]));
-      state.ramp = Array.from(RAMP, (c) => state.lookup.get(c) ?? 0);
-      if (!state.lights.length) {
-        const rand = rng(99);
-        state.lights = Array.from({ length: 56 }, (_, i) => ({
-          h: 0.12 + rand() * 0.86,
-          theta: rand() * Math.PI * 2,
-          colour: [4, 5, 6, 4, 5, 9][i % 6],
-          phase: rand() * Math.PI * 2,
-          ch: LIGHT_CHARS[Math.floor(rand() * LIGHT_CHARS.length)],
-        }));
+      const layout = treeLayout(f.width, f.height, f.dpr, { ground: true, small: f.small, share: placement.share, detail: f.small ? 62 : 96 });
+      const g = treeGeometry(layout.rows, true);
+      st.layout = layout;
+      st.g = g;
+      st.ramp = getRamp();
+      st.atlas = getAtlas(layout.fontPx, layout.dpr);
+      st.atlas.prewarm(`${st.ramp}/\\'.()oO@*+#`, ALL_FAMILIES);
+      // Static parts: snow, trunk and presents.
+      const scene = renderTree({ rows: layout.rows, aspect: layout.ch / layout.cw, ramp: st.ramp, ground: true, foliage: false, star: false, seed: 2026 });
+      st.base ??= document.createElement('canvas');
+      st.base.width = scene.cols * layout.cw;
+      st.base.height = scene.rows * layout.ch;
+      const bctx = st.base.getContext('2d')!;
+      bctx.clearRect(0, 0, st.base.width, st.base.height);
+      drawScene(bctx, scene, st.atlas);
+      st.x0 = Math.round(f.width * f.dpr * placement.x - st.base.width / 2);
+      st.y0 = Math.round(f.height * f.dpr * placement.y - st.base.height / 2);
+      // Branch width per row.
+      st.rowHW = new Float32Array(layout.rows);
+      st.rowF = new Float32Array(layout.rows).fill(-1);
+      for (let row = 0; row < layout.rows; row++) {
+        const s = ((row + 0.5) / layout.rows - g.vTop) / g.Hf;
+        if (s < 0 || s > 1) continue;
+        const { hw, f: lf } = layerWidth(g, s);
+        st.rowHW[row] = hw;
+        st.rowF[row] = lf;
       }
-      state.snow.resize(f);
+      if (!st.lights.length) {
+        const rand = random(99);
+        st.lights = Array.from({ length: 90 }, (_, i) => ({ s: 0.06 + rand() * 0.92, phi: rand() * Math.PI * 2, kind: [0, 1, 2, 0, 1, 3][i % 6], phase: rand() * 6.3, speed: 0.6 + rand() * 1.2 }));
+        st.baubles = Array.from({ length: 26 }, (_, i) => ({ s: 0.18 + rand() * 0.78, phi: rand() * Math.PI * 2, kind: [FAM.red, FAM.white, FAM.red, FAM.gold][i % 4], phase: 0, speed: 0 }));
+      }
     },
     draw(f) {
-      const { ctx, width, height, t, dt, progress, small } = f;
-      const { cw, ch, cols, rows, depth, glyph, colour, touched, chars } = state;
-      const index = (c: string) => state.lookup.get(c) ?? 0;
-      const ramp = state.ramp;
+      const { ctx, t, dt, progress } = f;
+      const { layout, g, atlas, base, ramp } = st;
+      if (!layout || !g || !atlas || !base) return;
+      const { cw, ch, rows } = layout;
+      const R = rows;
+      const toCols = (R * ch) / cw;
+      // Left edge of the centre column (the scene has an odd number of columns).
+      const cx = st.x0 + ((base.width / cw - 1) / 2) * cw;
 
-      state.intro = f.reduced ? 1 : Math.min(1, state.intro + dt * 0.012);
-      const ease = 1 - Math.pow(1 - state.intro, 3);
-      if (!f.reduced) state.rot += dt * 0.0065 + f.scrolled * 0.0055;
-      const rot = state.rot;
+      st.grow = f.reduced ? 1 : Math.min(1, st.grow + dt * 0.015);
+      const grown = 1 - Math.pow(1 - st.grow, 3);
+      if (!f.reduced) st.rot += dt * 0.006 + f.scrolled * 0.004;
+      const rot = st.rot;
 
-      for (const i of touched) depth[i] = -1e9;
-      touched.length = 0;
+      // Only the tree's box (plus room for the glows) changes, so only that is cleared.
+      const pad = ch * 6;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(st.x0 - pad, st.y0 - pad, base.width + pad * 2, base.height + pad * 2);
+      ctx.drawImage(base, st.x0, st.y0);
 
-      const plot = (col: number, row: number, z: number, g: number, c: number) => {
-        if (col < 0 || row < 0 || col >= cols || row >= rows) return;
-        const i = row * cols + col;
-        if (z <= depth[i]) return;
-        if (depth[i] === -1e9) touched.push(i);
-        depth[i] = z;
-        glyph[i] = g;
-        colour[i] = c;
-      };
-
-      // Tree size: fills most of the screen height, stays inside the width.
-      const zoom = 1 + progress * 0.12;
-      const treeRows = Math.min(rows * 0.7, (cols * cw * 1.25) / ch) * zoom;
-      const baseR = ((treeRows * ch) / cw) * 0.36;
-      const top = Math.round(rows * 0.53 - treeRows * 0.5);
-      const cx = cols / 2;
-      const radiusAt = (h: number) => {
-        const local = (h * TIERS) % 1;
-        return baseR * (0.06 + 0.94 * h) * (0.72 + 0.28 * local);
-      };
-
-      // Foliage: only the half facing us can be seen, so only that half is sampled.
-      const grown = Math.max(0.05, ease);
-      const lastRow = Math.round(treeRows * grown);
-      for (let r = 0; r <= lastRow; r++) {
-        const h = r / treeRows;
-        const radius = radiusAt(h);
-        const row = top + r;
-        const steps = Math.max(6, Math.ceil(radius * Math.PI * 1.6));
-        for (let s = 0; s <= steps; s++) {
-          const psi = (s / steps) * Math.PI; // 0..pi: right edge, front, left edge
-          const x = radius * Math.cos(psi);
-          const z = radius * Math.sin(psi);
-          const theta = psi - rot;
-          // Lit from the front-left; the branch texture moves with the rotation.
-          const light = 0.25 + 0.55 * Math.sin(psi) + 0.25 * Math.cos(psi + 0.9);
-          const texture = 0.18 * Math.sin(theta * 7 + h * 46) + 0.12 * Math.sin(theta * 13 - h * 21);
-          const lum = Math.max(0, Math.min(0.999, light + texture));
-          const g = ramp[Math.floor(lum * RAMP.length)];
-          plot(Math.round(cx + x), row, z, g, lum > 0.8 ? 3 : lum > 0.55 ? 2 : lum > 0.3 ? 1 : 0);
-        }
-      }
-
-      // Candy-cane ribbon: more of it winds on as you scroll down the page.
-      const reach = Math.min(1, (0.3 + progress * 0.75) * ease);
-      const ribbonSteps = Math.ceil(treeRows * TURNS * 9);
-      for (let s = 0; s <= ribbonSteps; s++) {
-        const h = 0.04 + (s / ribbonSteps) * 0.96;
-        if (h > reach) break;
-        const theta = h * TURNS * Math.PI * 2;
-        const psi = theta + rot;
-        const z = Math.sin(psi);
-        if (z < -0.05) continue;
-        const radius = radiusAt(h) * 1.08 + 0.6;
-        const stripe = Math.floor(h * TURNS * 14) % 2;
-        plot(Math.round(cx + radius * Math.cos(psi)), top + Math.round(h * treeRows), radius * z + 1.5, index(z > 0.6 ? '#' : '='), stripe ? 5 : 4);
-      }
-
-      // Lights twinkle; more of them come on as you scroll.
-      const lit = Math.floor(state.lights.length * Math.min(1, 0.4 + progress * 0.8));
-      for (let i = 0; i < lit; i++) {
-        const L = state.lights[i];
-        if (L.h > grown) continue;
-        const psi = L.theta + rot;
-        const z = Math.sin(psi);
-        if (z < 0.15) continue;
-        const on = Math.sin(t * 2.2 + L.phase) > -0.35;
-        const radius = radiusAt(L.h) * 1.02 + 0.3;
-        plot(Math.round(cx + radius * Math.cos(psi)), top + Math.round(L.h * treeRows), radius * z + 2, index(on ? L.ch : '.'), on ? L.colour : 8);
-      }
-
-      // Star, with rays that flicker between + and x.
-      const starRow = top - 1;
-      const sparkle = Math.floor(t * 2.5) % 2 === 0;
-      plot(Math.round(cx), starRow, 1e6, index('*'), 6);
-      if (ease > 0.6) {
-        for (const [dx, dy, a, b] of [
-          [-1, 0, '-', '='],
-          [1, 0, '-', '='],
-          [0, -1, '|', '+'],
-          [-1, -1, '\\', 'x'],
-          [1, -1, '/', 'x'],
-        ] as const) {
-          plot(Math.round(cx) + dx, starRow + dy, 1e6, index(sparkle ? a : b), sparkle ? 6 : 5);
-        }
-      }
-
-      // Trunk and a ring of snow orbiting the base.
-      const base = top + Math.round(treeRows) + 1;
-      for (let r = 0; r < 2; r++) for (let dx = -1; dx <= 1; dx++) plot(Math.round(cx) + dx, base + r, 0, index('|'), 7);
-      const ringR = baseR * 1.15;
-      const ringSteps = Math.ceil(ringR * 4);
-      for (let s = 0; s < ringSteps; s++) {
-        const a = (s / ringSteps) * Math.PI * 2 + rot * 0.5;
-        const z = Math.sin(a);
-        plot(Math.round(cx + ringR * Math.cos(a)), base + 2 + Math.round(z * 1.4), z * ringR - 50, index(s % 3 ? '.' : '*'), z > 0 ? 5 : 8);
-      }
-
-      // Paint, one colour at a time.
-      ctx.clearRect(0, 0, width, height);
-      ctx.globalAlpha = small ? 0.5 : 0.58;
-      ctx.textBaseline = 'top';
-      ctx.textAlign = 'left';
-      ctx.font = `${small ? 12 : 14}px "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace`;
-      for (let c = 0; c < COLOURS.length; c++) {
-        let set = false;
-        for (const i of touched) {
-          if (colour[i] !== c) continue;
-          if (!set) {
-            ctx.fillStyle = COLOURS[c];
-            set = true;
+      // Branches, ray-cast cell by cell (only the half facing us is ever visible).
+      const reach = Math.min(1, (0.28 + progress * 0.8) * grown);
+      const lastRow = Math.floor((g.vTop + g.Hf * grown) * R);
+      for (let row = 0; row <= lastRow && row < R; row++) {
+        const lf = st.rowF[row];
+        if (lf < 0) continue;
+        const s = ((row + 0.5) / R - g.vTop) / g.Hf;
+        const half = st.rowHW[row] * toCols;
+        const y = st.y0 + row * ch;
+        const layer = 0.3 + 0.7 * Math.pow(lf, 1.3);
+        const ribbonAt = s * TURNS * Math.PI * 2;
+        const end = Math.floor(half);
+        for (let c = -end; c <= end; c++) {
+          const x = c / half;
+          if (x > 1 || x < -1) continue;
+          const nz = Math.sqrt(1 - x * x);
+          const phi = Math.asin(x) + rot;
+          const px = cx + c * cw;
+          // Candy-cane ribbon.
+          const d = wrap(phi - ribbonAt);
+          if (s <= reach && Math.abs(d) < RIBBON) {
+            const stripe = Math.floor(s * TURNS * 12 + d * 1.5) & 1;
+            const lum = (0.3 + 0.65 * nz - 0.15 * x) * (1 - (Math.abs(d) / RIBBON) * 0.4);
+            atlas.draw(ctx, rampChar(ramp, lum, 0.3, 1), code(stripe ? FAM.white : FAM.red, lum), px, y);
+            continue;
           }
-          ctx.fillText(chars[glyph[i]], (i % cols) * cw, Math.floor(i / cols) * ch);
+          const needles = 0.5 + 0.3 * Math.sin(phi * 9 + s * 60 + 2 * Math.sin(phi * 3)) + 0.2 * Math.sin(phi * 23 - s * 130);
+          const lum = tone((0.2 + 0.62 * nz - 0.3 * x) * layer * (0.48 + 0.52 * needles));
+          if (lf > 0.86 && Math.sin(phi * 17 + row * 1.3) > 0.55) {
+            atlas.draw(ctx, (row + c) & 1 ? "'" : '.', code(FAM.snow, 0.7 + 0.3 * lum), px, y);
+            continue;
+          }
+          const chr = x < -0.95 ? '/' : x > 0.95 ? '\\' : rampChar(ramp, lum, 0.04, 0.9);
+          atlas.draw(ctx, chr, code(FAM.green, 0.08 + lum * 0.9), px, y);
         }
       }
-      ctx.globalAlpha = 1;
-      state.snow.draw(f);
-    },
-  });
 
-  return <canvas ref={ref} aria-hidden="true" className="absolute inset-0 h-full w-full" />;
+      // Baubles turning with the tree.
+      const rb = Math.max(0.017, 2.3 / R);
+      for (const b of st.baubles) {
+        if (b.s > grown) continue;
+        const theta = wrap(b.phi - rot);
+        if (Math.abs(theta) > Math.PI / 2 - 0.2) continue;
+        const v = g.vTop + b.s * g.Hf;
+        const bu = Math.sin(theta) * layerWidth(g, b.s).hw * 0.98;
+        const size = rb * (0.8 + 0.2 * Math.cos(theta));
+        for (let row = Math.floor((v - size) * R); row <= Math.ceil((v + size) * R); row++) {
+          const ny = ((row + 0.5) / R - v) / size;
+          for (let c = Math.floor((bu - size) * toCols) - 1; c <= Math.ceil((bu + size) * toCols) + 1; c++) {
+            const nx = (c / toCols - bu) / size;
+            const r2 = nx * nx + ny * ny;
+            if (r2 > 1) continue;
+            const nz = Math.sqrt(1 - r2);
+            const diff = Math.max(0, -0.45 * nx - 0.55 * ny + 0.7 * nz);
+            const spec = Math.pow(Math.max(0, -0.24 * nx - 0.3 * ny + 0.92 * nz), 26);
+            const lum = tone(0.12 + 0.75 * diff + 0.9 * spec);
+            const chr = r2 > 0.62 && Math.abs(nx) > 0.72 ? (nx < 0 ? '(' : ')') : rampChar(ramp, lum, 0.2, 0.92);
+            atlas.draw(ctx, chr, spec > 0.45 ? code(FAM.white, 1) : code(b.kind, lum), cx + c * cw, st.y0 + row * ch);
+          }
+        }
+      }
+
+      // Lights: more come on as you scroll down.
+      const lit = Math.floor(st.lights.length * (f.scrollable ? Math.min(1, 0.45 + progress * 0.7) : 1));
+      ctx.globalCompositeOperation = 'lighter';
+      const glowR = ch * 2.2;
+      const bulbs: Array<[number, number, number, number]> = [];
+      for (let i = 0; i < lit; i++) {
+        const L = st.lights[i];
+        if (L.s > grown) continue;
+        const theta = wrap(L.phi - rot);
+        if (Math.abs(theta) > Math.PI / 2 - 0.1) continue;
+        const px = cx + Math.round(Math.sin(theta) * layerWidth(g, L.s).hw * 1.01 * toCols) * cw;
+        const py = st.y0 + Math.floor((g.vTop + L.s * g.Hf) * R) * ch;
+        const a = (f.reduced ? 1 : 0.55 + 0.45 * Math.sin(t * L.speed * 2.2 + L.phase)) * Math.cos(theta);
+        ctx.globalAlpha = 0.8 * a;
+        const r = glowR * (0.7 + 0.5 * a);
+        ctx.drawImage(glowSprite(LIGHT_HUES[L.kind].rgb), px + cw / 2 - r, py + ch / 2 - r, r * 2, r * 2);
+        bulbs.push([px, py, L.kind, a]);
+      }
+      // Star glow.
+      const starY = st.y0 + g.vStar * R * ch;
+      const sr = ch * (5 + 3 * progress) * (0.92 + 0.08 * Math.sin(t * 2.4));
+      ctx.globalAlpha = 0.5 * grown;
+      ctx.drawImage(glowSprite('255,214,120'), cx + cw / 2 - sr, starY - sr, sr * 2, sr * 2);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      for (const [px, py, kind, a] of bulbs) atlas.draw(ctx, a > 0.75 ? 'O' : 'o', code(LIGHT_HUES[kind].fam, 0.5 + 0.5 * a), px, py);
+
+      // The star spins on its own axis.
+      if (grown > 0.5) {
+        const turn = Math.cos(rot * 0.8);
+        const squash = Math.max(0.12, Math.abs(turn));
+        for (let row = Math.floor((g.vStar - g.starOuter) * R) - 1; row <= Math.ceil((g.vStar + g.starOuter) * R) + 1; row++) {
+          const dv = (row + 0.5) / R - g.vStar;
+          for (let c = Math.floor(-g.starOuter * toCols) - 1; c <= Math.ceil(g.starOuter * toCols) + 1; c++) {
+            const du = c / toCols / squash;
+            const r = Math.hypot(du, dv);
+            const a = Math.atan2(du, -dv);
+            const rs = g.starInner + (g.starOuter - g.starInner) * Math.pow(Math.abs(Math.cos(2.5 * a)), 2.4);
+            if (r > rs) continue;
+            const facet = (Math.sin(5 * a) > 0 ? -1 : 1) * (turn > 0 ? 1 : -1);
+            const lum = Math.min(1, (0.55 + 0.22 * facet * (r / rs) + 0.35 * (1 - r / rs)) * (0.6 + 0.4 * squash));
+            atlas.draw(ctx, starChar(r / g.starInner, facet, lum), r < g.starInner * 0.5 ? code(FAM.white, 1) : code(FAM.gold, lum), cx + c * cw, st.y0 + row * ch);
+          }
+        }
+      }
+    },
+  }, [placement.x, placement.y, placement.share]);
+
+  return (
+    <>
+      <canvas ref={ref} aria-hidden="true" className="absolute inset-0 h-full w-full" />
+      <AsciiSnow density={0.7} />
+    </>
+  );
 });

@@ -16,13 +16,13 @@ describe('console greeting', () => {
     expect(greetingStyle).toContain('font-weight: 800');
   });
 
-  it('draws the tree on black with a gold star, green branches and lights', () => {
+  it('draws the detailed tree on black, in colour', () => {
     const { text, styles } = asciiTreeForConsole();
     expect(text.replace(/%c/g, '')).toContain('*');
     expect(text.split('\n').length).toBeGreaterThan(10);
     expect(styles.every((s) => s.includes('background:#000'))).toBe(true);
-    expect(styles.some((s) => s.includes('#ffdf7e'))).toBe(true);
-    expect(styles.some((s) => s.includes('#2fc46b'))).toBe(true);
-    expect(styles.some((s) => s.includes('#ff2b46'))).toBe(true);
+    // Greens for the branches, and warm/red tones for the star, lights and baubles.
+    expect(styles.some((s) => /color:rgb\((\d+),(\d+),(\d+)\)/.test(s) && Number(s.match(/rgb\((\d+),(\d+)/)![2]) > Number(s.match(/rgb\((\d+)/)![1]) + 40)).toBe(true);
+    expect(styles.some((s) => /color:rgb\((2[0-5]\d),/.test(s))).toBe(true);
   });
 });

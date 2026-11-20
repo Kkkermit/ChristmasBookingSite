@@ -1,4 +1,6 @@
-import { LOGIN_TREE } from '../components/ascii/tree';
+import { getRamp } from '../components/ascii/engine/atlas';
+import { EMPTY, code, cssColour } from '../components/ascii/engine/palette';
+import { LIGHT_HUES, renderTree } from '../components/ascii/engine/treeModel';
 
 export const GREETING = 'Hello there Connor, how are you today :)';
 
@@ -11,42 +13,31 @@ export const GREETING_STYLE = [
   'border-radius: 6px',
 ].join(';');
 
-const KEY_COLOURS: Record<string, string> = {
-  g: '#1f9a52',
-  G: '#2fc46b',
-  l: '#7ff0a8',
-  y: '#ffdf7e',
-  Y: '#ffdf7e',
-  b: '#b0773c',
-  r: '#ff2b46',
-  w: '#ffffff',
-};
-const LIGHTS = ['#ff2b46', '#ffffff', '#ffdf7e'];
-const BASE = 'background:#000;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.15;font-weight:700';
+const BASE = 'background:#000;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9px;line-height:1.1;font-weight:700';
 
-/** The ASCII tree as a console format string plus one style per %c. */
-export function asciiTreeForConsole(): { text: string; styles: string[] } {
+/** A detailed ASCII tree (the same renderer as the site) as a console format string plus one style per %c. */
+export function asciiTreeForConsole(rows = 30): { text: string; styles: string[] } {
+  const tree = renderTree({ rows, aspect: 2, ramp: getRamp(), seed: 25 });
+  // Lights shine at full brightness in the console.
+  for (const l of tree.lights) tree.colour[l.row * tree.cols + l.col] = code(LIGHT_HUES[l.hue].fam, 1);
   let text = '';
   const styles: string[] = [];
-  let lights = 0;
-  LOGIN_TREE.lines.forEach((line, row) => {
-    const mask = LOGIN_TREE.mask[row];
-    let colour = '';
+  for (let row = 0; row < tree.rows; row++) {
+    let current = -1;
     // Pad each line so the black background forms a neat block.
-    const padded = `  ${line}  `;
-    const paddedMask = `  ${mask}  `;
-    for (let i = 0; i < padded.length; i++) {
-      const key = paddedMask[i];
-      const next = key === '*' ? LIGHTS[lights++ % LIGHTS.length] : (KEY_COLOURS[key] ?? '#000');
-      if (next !== colour || key === '*') {
+    for (let col = -2; col < tree.cols + 2; col++) {
+      const inside = col >= 0 && col < tree.cols;
+      const i = row * tree.cols + col;
+      const c = inside ? tree.colour[i] : EMPTY;
+      if (c !== current) {
         text += '%c';
-        styles.push(`${BASE};color:${next}`);
-        colour = key === '*' ? '' : next;
+        styles.push(`${BASE};color:${c === EMPTY ? '#000' : cssColour(c)}`);
+        current = c;
       }
-      text += padded[i];
+      text += inside && c !== EMPTY ? tree.glyph[i] : ' ';
     }
     text += '\n';
-  });
+  }
   return { text, styles };
 }
 

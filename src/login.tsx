@@ -18,11 +18,11 @@ function LoginPage() {
     <MotionConfig reducedMotion="user">
       <ToastProvider>
         <div className="relative min-h-dvh overflow-x-clip">
-          <Backdrop />
+          <Backdrop beside />
           <OfflineBanner position="top-4" />
           <ErrorBoundary>
             {/* Load the real app once the session cookie is set. */}
-            <LoginScreen onSuccess={() => setTimeout(() => window.location.replace('/'), 450)} />
+            <LoginScreen beside onSuccess={() => setTimeout(() => window.location.replace('/'), 450)} />
           </ErrorBoundary>
           <FooterScene />
           <DesignSwitcher className="fixed right-3 top-3 z-20" />

@@ -1,124 +1,163 @@
-import { memo, useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { LIGHT_COLOURS, PALETTE } from '../AsciiArt';
-import { scrollProgress } from '../canvas';
-import { BIG_TREE } from '../tree';
+import { memo, useEffect, useRef, useState } from 'react';
+import type { Placement } from '../Backdrop';
 import { AsciiSnow } from '../AsciiSnow';
+import { prefersReducedMotion } from '../canvas';
+import { getAtlas, getRamp, glowSprite } from '../engine/atlas';
+import { drawScene, treeLayout, type TreeLayout } from '../engine/layout';
+import { FAM, code } from '../engine/palette';
+import { getScroll } from '../engine/scroll';
+import { LIGHT_HUES, renderTree, type TreeScene } from '../engine/treeModel';
+import { useViewport } from '../engine/viewport';
 
-const LINE_HEIGHT = 1.05;
-const CHAR_WIDTH = 0.6; // JetBrains Mono advance width
-
-/** The tree as React nodes: one span per colour run, lights as their own spans. */
-function useTreeNodes() {
-  return useMemo(() => {
-    const { lines, mask } = BIG_TREE;
-    let light = 0;
-    return lines.map((line, row) => {
-      const parts: ReactNode[] = [];
-      let run = '';
-      let key = '';
-      const flush = (i: number) => {
-        if (run) parts.push(PALETTE[key] ? <span key={i} className={PALETTE[key]}>{run}</span> : run);
-        run = '';
-      };
-      for (let i = 0; i < line.length; i++) {
-        const k = mask[row][i] === ' ' ? '' : mask[row][i];
-        if (k === '*') {
-          flush(i);
-          const n = light++;
-          const y = BIG_TREE.lights[n]?.y ?? row / lines.length;
-          parts.push(
-            <span key={`l${i}`} className="tree-light" data-y={y.toFixed(3)}>
-              <span
-                className={`inline-block ${LIGHT_COLOURS[n % LIGHT_COLOURS.length]}`}
-                style={{ animationDelay: `${((n * 0.41) % 2.4).toFixed(2)}s`, animationDuration: `${1.8 + (n % 5) * 0.35}s` }}
-              >
-                {line[i]}
-              </span>
-            </span>,
-          );
-          continue;
-        }
-        if (k !== key) {
-          flush(i);
-          key = k;
-        }
-        run += line[i];
-      }
-      flush(line.length);
-      return (
-        <span key={row} className="block animate-rise" style={{ animationDelay: `${row * 28}ms` }}>
-          {parts}
-        </span>
-      );
-    });
-  }, []);
+interface Built {
+  layout: TreeLayout;
+  scene: TreeScene;
 }
 
 /**
- * Design 1: a big hand-typed tree. The lights switch on from the top down as
- * you scroll, the star flares up at the bottom of the page, and the whole
- * tree drifts and grows slightly (parallax). Only classes and a transform
- * change on scroll, so it stays smooth on phones.
+ * Design 1: a big, detailed tree drawn in characters - layered branches,
+ * snow on the tips, tinsel and bead garlands, shaded baubles, presents.
+ * Its fairy lights switch on from the top down as you scroll, twinkling
+ * with a soft glow, the star flares at the bottom of the page and the tree
+ * drifts gently upwards (parallax). The tree itself is drawn once; only the
+ * lights are redrawn, ~30 times a second.
  */
-export const ClassicTree = memo(function ClassicTree() {
-  const treeRef = useRef<HTMLDivElement>(null);
-  const starRef = useRef<HTMLDivElement>(null);
-  const nodes = useTreeNodes();
+export const ClassicTree = memo(function ClassicTree({ placement }: { placement: Placement }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const baseRef = useRef<HTMLCanvasElement>(null);
+  const lightsRef = useRef<HTMLCanvasElement>(null);
+  const glowRef = useRef<HTMLCanvasElement>(null);
+  const view = useViewport();
+  const [built, setBuilt] = useState<Built | null>(null);
 
+  // Build and draw the tree whenever the screen size (or font) changes.
   useEffect(() => {
-    const tree = treeRef.current;
-    if (!tree) return;
-    const lights = Array.from(tree.querySelectorAll<HTMLElement>('[data-y]')).map((el) => ({ el, y: Number(el.dataset.y), on: false }));
+    const canvas = baseRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const small = view.w < 768;
+    const layout = treeLayout(view.w, view.h, view.dpr, { ground: true, small, share: placement.share });
+    const scene = renderTree({ rows: layout.rows, aspect: layout.ch / layout.cw, ramp: getRamp(), ground: true, seed: 2026 });
+    canvas.width = scene.cols * layout.cw;
+    canvas.height = scene.rows * layout.ch;
+    drawScene(ctx, scene, getAtlas(layout.fontPx, layout.dpr));
+    setBuilt({ layout, scene });
+  }, [view, placement.share]);
+
+  // Lights, star glow and parallax. Glows are soft, so they're drawn on a
+  // quarter-resolution layer; bulbs are only redrawn when their brightness changes.
+  useEffect(() => {
+    if (!built) return;
+    const glowCanvas = glowRef.current;
+    const bulbCanvas = lightsRef.current;
+    const wrap = wrapRef.current;
+    const gctx = glowCanvas?.getContext('2d');
+    const bctx = bulbCanvas?.getContext('2d');
+    if (!glowCanvas || !bulbCanvas || !gctx || !bctx || !wrap) return;
+    const { layout, scene } = built;
+    const { cw, ch, dpr } = layout;
+    const pad = ch * 3;
+    const GLOW_SCALE = 0.5 / dpr; // glow layer pixels per device pixel
+    glowCanvas.width = Math.ceil((scene.cols * cw + pad * 2) * GLOW_SCALE);
+    glowCanvas.height = Math.ceil((scene.rows * ch + pad * 2) * GLOW_SCALE);
+    bulbCanvas.width = scene.cols * cw;
+    bulbCanvas.height = scene.rows * ch;
+    bctx.clearRect(0, 0, bulbCanvas.width, bulbCanvas.height);
+    const atlas = getAtlas(layout.fontPx, dpr);
+    atlas.prewarm('oO', [FAM.red, FAM.white, FAM.gold, FAM.pink]);
+    const reduced = prefersReducedMotion();
+    const scroll = getScroll();
+    const on = new Float32Array(scene.lights.length);
+    const shown = new Int16Array(scene.lights.length).fill(-1);
+    const sprites = LIGHT_HUES.map((h) => glowSprite(h.rgb));
+    const starGlow = glowSprite('255,214,120');
+    const start = performance.now();
     let raf = 0;
-    const update = () => {
-      raf = 0;
-      const p = scrollProgress();
-      // A few lights are on at the top of the page; all are on by the bottom.
-      const reach = 0.18 + p * 1.0;
-      for (const light of lights) {
-        const on = light.y <= reach;
-        if (on !== light.on) {
-          light.on = on;
-          light.el.classList.toggle('on', on);
-        }
+    let last = 0;
+    let lastShift = '';
+    // Position on whole device pixels so the characters stay sharp.
+    const snap = (v: number) => Math.round(v * dpr) / dpr;
+    const parent = wrap.parentElement!;
+    wrap.style.left = `${snap(parent.clientWidth * placement.x - layout.widthCss / 2)}px`;
+    wrap.style.top = `${snap(parent.clientHeight * placement.y - layout.heightCss / 2)}px`;
+
+    const draw = (now: number) => {
+      const t = (now - start) / 1000;
+      const p = scroll.progress;
+      // Parallax: the tree rises a little as you scroll down the page.
+      const shift = `translate3d(0, ${snap(-p * parent.clientHeight * 0.045)}px, 0)`;
+      if (shift !== lastShift) {
+        wrap.style.transform = shift;
+        lastShift = shift;
       }
-      tree.style.transform = `translate3d(-50%, calc(-50% - ${(p * 5).toFixed(2)}vh), 0) scale(${(1 + p * 0.07).toFixed(4)})`;
-      starRef.current?.classList.toggle('opacity-100', p > 0.92);
+      // A third of the lights are on at the top of the page; all of them by the bottom (or straight away if the page can't scroll).
+      const reach = scroll.max < 80 ? 2 : 0.34 + p * 0.85;
+      gctx.setTransform(GLOW_SCALE, 0, 0, GLOW_SCALE, 0, 0);
+      gctx.clearRect(0, 0, glowCanvas.width / GLOW_SCALE, glowCanvas.height / GLOW_SCALE);
+      gctx.globalCompositeOperation = 'lighter';
+      const glowR = ch * 2.4;
+      scene.lights.forEach((l, i) => {
+        const target = reduced || l.y <= reach ? 1 : 0;
+        on[i] += (target - on[i]) * (reduced ? 1 : 0.12);
+        const twinkle = reduced ? 1 : 0.55 + 0.45 * Math.sin(t * l.speed * 2.2 + l.phase);
+        const a = on[i] * twinkle;
+        // Bulb: redraw only if its brightness level changed.
+        const level = on[i] < 0.05 ? 0 : 1 + Math.round(a * 8);
+        if (level !== shown[i]) {
+          shown[i] = level;
+          const x = l.col * cw;
+          const y = l.row * ch;
+          bctx.clearRect(x, y, cw, ch);
+          if (level > 0) atlas.draw(bctx, level > 6 ? 'O' : 'o', code(LIGHT_HUES[l.hue].fam, 0.35 + (level / 9) * 0.65), x, y);
+        }
+        if (a < 0.03) return;
+        const r = glowR * (0.7 + 0.5 * a);
+        gctx.globalAlpha = 0.85 * a;
+        gctx.drawImage(sprites[l.hue], pad + (l.col + 0.5) * cw - r, pad + (l.row + 0.5) * ch - r, r * 2, r * 2);
+      });
+      // The star glows brighter the further down the page you are.
+      const sr = ch * (6 + 6 * p) * (0.92 + 0.08 * Math.sin(t * 2.4));
+      gctx.globalAlpha = 0.45 + 0.4 * p;
+      gctx.drawImage(starGlow, pad + (scene.star.col + 0.5) * cw - sr, pad + (scene.star.row + 0.5) * ch - sr, sr * 2, sr * 2);
+      gctx.globalCompositeOperation = 'source-over';
+      gctx.globalAlpha = 1;
     };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
+
+    const loop = (now: number) => {
+      raf = requestAnimationFrame(loop);
+      if (now - last < 31) return;
+      last = now;
+      draw(now);
     };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
+    const onScroll = () => requestAnimationFrame(draw);
+    const onVisibility = () => {
+      cancelAnimationFrame(raf);
+      if (!document.hidden && !reduced) raf = requestAnimationFrame(loop);
+    };
+    draw(performance.now());
+    if (reduced) window.addEventListener('scroll', onScroll, { passive: true });
+    else raf = requestAnimationFrame(loop);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [built, placement.x, placement.y]);
 
-  const cols = BIG_TREE.width;
-  const rows = BIG_TREE.height;
-  // As big as fits: ~84% of the screen height, never wider than the screen.
-  const fontSize = `min(calc(84vh / ${(rows * LINE_HEIGHT).toFixed(2)}), calc(96vw / ${(cols * CHAR_WIDTH).toFixed(2)}))`;
-
+  const w = built?.layout.widthCss ?? 0;
+  const h = built?.layout.heightCss ?? 0;
+  const pad = built ? (built.layout.ch * 3) / built.layout.dpr : 0;
   return (
     <>
       <div
-        ref={treeRef}
-        className="absolute left-1/2 top-[52%] will-change-transform"
-        style={{ transform: 'translate3d(-50%, -50%, 0)', transformOrigin: '50% 60%', fontSize }}
+        ref={wrapRef}
+        className="absolute will-change-transform"
+        style={{ width: w, height: h, left: `calc(50% - ${w / 2}px)`, top: `calc(55% - ${h / 2}px)` }}
       >
-        {/* Star flare when you reach the bottom of the page. */}
-        <div
-          ref={starRef}
-          className="absolute left-1/2 top-0 h-[6em] w-[14em] -translate-x-1/2 -translate-y-[1.6em] rounded-full opacity-0 transition-opacity duration-700"
-          style={{ background: 'radial-gradient(closest-side, rgba(255,223,126,0.35), rgba(255,223,126,0))' }}
-        />
-        <pre className="ascii relative m-0 opacity-60" style={{ lineHeight: LINE_HEIGHT }}>
-          {nodes}
-        </pre>
+        <canvas ref={baseRef} className="absolute inset-0 h-full w-full animate-[tree-in_1.4s_cubic-bezier(0.22,1,0.36,1)_both]" />
+        <canvas ref={glowRef} className="absolute" style={{ left: -pad, top: -pad, width: w + pad * 2, height: h + pad * 2 }} />
+        <canvas ref={lightsRef} className="absolute inset-0 h-full w-full" />
       </div>
       <AsciiSnow />
     </>

@@ -2,18 +2,17 @@ import { motion, useAnimationControls } from 'motion/react';
 import { useState, type FormEvent } from 'react';
 import { ApiError, api } from '../lib/api';
 import { celebrate } from '../lib/celebrate';
-import { AsciiArt } from './ascii/AsciiArt';
 import { Banner } from './ascii/Banner';
 import { BANNER_FEAST, BANNER_XMAS } from './ascii/banners';
 import { Glyph } from './ascii/Glyph';
-import { LOGIN_TREE } from './ascii/tree';
+import { TreeArt } from './ascii/TreeArt';
 import { Spinner } from './Spinner';
 
 /**
  * The only screen strangers can ever see. Deliberately says nothing about
  * the venue or the event details - those only load after logging in.
  */
-export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
+export function LoginScreen({ onSuccess, beside = false }: { onSuccess(): void; /** Card to the right of the backdrop tree on wide screens. */ beside?: boolean }) {
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
@@ -39,7 +38,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
 
   return (
     <motion.main
-      className="relative z-10 flex min-h-dvh flex-col items-center px-4 pb-40 pt-36 sm:pb-48"
+      className={`relative z-10 flex min-h-dvh flex-col items-center px-4 pb-40 pt-36 sm:pb-48 ${beside ? 'min-[1180px]:items-end min-[1180px]:pr-[9vw]' : ''}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.08, filter: 'blur(8px)' }}
@@ -50,7 +49,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
           initial={{ y: 40, opacity: 0, rotate: -3 }}
           animate={{ y: 0, opacity: 1, rotate: 0 }}
           transition={{ type: 'spring', stiffness: 160, damping: 16, delay: 0.1 }}
-          className="glass relative overflow-visible px-6 pb-8 pt-36 text-center sm:px-10"
+          className="glass relative overflow-visible px-6 pb-8 pt-40 text-center sm:px-10"
         >
           <div className="absolute -top-24 left-1/2 -translate-x-1/2">
             <motion.div
@@ -63,7 +62,7 @@ export function LoginScreen({ onSuccess }: { onSuccess(): void }) {
                 aria-hidden="true"
                 className="absolute inset-x-[-30%] bottom-0 h-28 rounded-full bg-[radial-gradient(closest-side,rgba(255,43,70,0.28),transparent)]"
               />
-              <AsciiArt lines={LOGIN_TREE.lines} mask={LOGIN_TREE.mask} twinkle className="relative text-[11px] font-bold sm:text-[12px]" />
+              <TreeArt rows={48} fontPx={4.4} className="relative" />
             </motion.div>
           </div>
 

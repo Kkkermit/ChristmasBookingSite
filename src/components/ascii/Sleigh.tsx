@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
-import { AsciiArt } from './AsciiArt';
-import { SLEIGH } from './pieces';
+import { useEffect, useMemo, useState } from 'react';
+import { ArtCanvas } from './ArtCanvas';
+import { sleigh } from './engine/art';
 
 const FLIGHT_SECONDS = 10;
 const TRAIL = ' * . + . * .  +  .';
@@ -13,6 +13,7 @@ const TRAIL = ' * . + . * .  +  .';
  */
 export function Sleigh({ everyMs = 28000 }: { everyMs?: number }) {
   const reduced = useReducedMotion();
+  const art = useMemo(() => sleigh(), []);
   const [flight, setFlight] = useState<{ id: number; width: number } | null>(null);
   const [count, setCount] = useState(0);
 
@@ -34,7 +35,7 @@ export function Sleigh({ everyMs = 28000 }: { everyMs?: number }) {
   if (!flight) return null;
   const leftToRight = count % 2 === 0;
   // The sleigh + trail is at most ~460px wide; start and finish well beyond the edges.
-  const offLeft = -520;
+  const offLeft = -560;
   const offRight = flight.width + 40;
 
   return (
@@ -47,7 +48,7 @@ export function Sleigh({ everyMs = 28000 }: { everyMs?: number }) {
         transition={{ duration: FLIGHT_SECONDS, ease: 'linear', y: { duration: FLIGHT_SECONDS, ease: 'easeInOut' } }}
         onAnimationComplete={() => setFlight(null)}
       >
-        <AsciiArt lines={SLEIGH.lines} mask={SLEIGH.mask} className="text-[11px] sm:text-[13px]" />
+        <ArtCanvas art={art} fontPx={flight.width < 768 ? 6 : 8} />
         <span className="ml-1 font-mono text-[13px] text-star">
           {TRAIL.split('').map((c, i) => (
             <span key={i} className="inline-block animate-twinkle" style={{ animationDelay: `${(i * 0.12).toFixed(2)}s`, opacity: 1 - i / TRAIL.length }}>

@@ -4,48 +4,89 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { resetDesignForTests } from '../../lib/design';
 import { AsciiArt } from './AsciiArt';
 import { DesignPicker, DesignSwitcher } from './DesignSwitcher';
-import { FOOTER_SCENE, SLEIGH, SNOWMAN } from './pieces';
-import { BIG_TREE, LOGIN_TREE, LOGO_TREE, buildTree } from './tree';
+import { getRamp, rampChar } from './engine/atlas';
+import { bauble, cottage, lamp, paintArt, presents, sleigh, snowman, village } from './engine/art';
+import { EMPTY, FAM, code, shift } from './engine/palette';
+import { renderTree, treeGeometry } from './engine/treeModel';
+import { LOGO_TREE } from './tree';
 
 afterEach(() => {
   resetDesignForTests();
   window.localStorage.clear();
 });
 
-describe('ASCII trees', () => {
-  it.each([
-    ['big', BIG_TREE],
-    ['login', LOGIN_TREE],
-    ['logo', LOGO_TREE],
-  ])('%s tree has a colour for every character', (_, tree) => {
-    expect(tree.lines).toHaveLength(tree.height);
-    for (let row = 0; row < tree.lines.length; row++) {
-      expect(tree.lines[row]).toHaveLength(tree.width);
-      expect(tree.mask[row]).toHaveLength(tree.width);
-      for (let col = 0; col < tree.width; col++) {
-        expect(tree.lines[row][col] === ' ').toBe(tree.mask[row][col] === ' ');
-      }
+const ramp = getRamp();
+const text = (art: { cols: number; rows: number; glyph: string[] }) =>
+  Array.from({ length: art.rows }, (_, r) => art.glyph.slice(r * art.cols, (r + 1) * art.cols).map((c) => c || ' ').join(''));
+
+describe('procedural tree renderer', () => {
+  const tree = renderTree({ rows: 90, aspect: 2, ramp, ground: true, seed: 2026 });
+
+  it('fills a grid sized to the tree, every drawn cell with a glyph and a colour', () => {
+    expect(tree.rows).toBe(90);
+    expect(tree.cols).toBe(Math.ceil(treeGeometry(90, true).widthFactor * 90 * 2) | 1);
+    for (let i = 0; i < tree.glyph.length; i++) expect(tree.glyph[i] === '').toBe(tree.colour[i] === EMPTY);
+  });
+
+  it('draws branches, a star, lights, baubles, presents and snow', () => {
+    const families = new Set(Array.from(tree.colour).filter((c) => c !== EMPTY).map((c) => c >> 4));
+    for (const fam of [FAM.green, FAM.gold, FAM.red, FAM.white, FAM.bark, FAM.snow]) expect(families.has(fam)).toBe(true);
+    expect(tree.lights.length).toBeGreaterThan(25);
+    expect(tree.lights.every((l) => l.y >= 0 && l.y <= 1 && tree.glyph[l.row * tree.cols + l.col] === 'o')).toBe(true);
+    expect(tree.glyph[tree.star.row * tree.cols + tree.star.col]).not.toBe('');
+    // The tree is wider at the bottom than at the top.
+    const width = (row: number) => text(tree)[row].trim().length;
+    expect(width(70)).toBeGreaterThan(width(20));
+  });
+
+  it('is identical on every load, and scales to any size', () => {
+    const again = renderTree({ rows: 90, aspect: 2, ramp, ground: true, seed: 2026 });
+    expect(again.glyph).toEqual(tree.glyph);
+    const small = renderTree({ rows: 30, aspect: 2, ramp });
+    expect(small.lights.length).toBeGreaterThan(3);
+    expect(small.cols).toBeLessThan(tree.cols);
+  });
+});
+
+describe('art pieces', () => {
+  it('builds the cottage, snowman, lamp, presents and sleigh as tidy blocks', () => {
+    for (const art of [cottage(), snowman(), lamp(), presents(), sleigh()]) {
+      expect(art.glyph).toHaveLength(art.cols * art.rows);
+      expect(art.colour.some((c) => c !== EMPTY)).toBe(true);
     }
+    expect(lamp().lights).toHaveLength(1);
   });
 
-  it('puts a star on top, lights in the branches and a trunk at the bottom', () => {
-    expect(BIG_TREE.mask[1]).toContain('Y');
-    expect(BIG_TREE.lights.length).toBeGreaterThan(20);
-    expect(BIG_TREE.lights.every((l) => l.y > 0 && l.y < 1)).toBe(true);
-    expect(BIG_TREE.lines.some((l) => l.includes('|||||'))).toBe(true);
+  it('lays out a village as wide as asked, with the snowman in the middle', () => {
+    const art = village(160, 32, 2, ramp);
+    expect(art.cols).toBe(160);
+    const rows = text(art);
+    expect(rows.slice(-3).every((r) => r.trim().length > 120)).toBe(true);
+    expect(rows.some((r) => r.slice(70, 90).includes('o   o'))).toBe(true);
   });
 
-  it('is the same on every load', () => {
-    const again = buildTree({ tiers: [6, 7, 8, 9], starts: [0, 4, 7, 10], slope: 1.6, star: 'big', trunk: { width: 5, height: 3 }, lightDensity: 0.085, garlands: 4, presents: true, ground: true, seed: 2026 });
-    expect(again.lines).toEqual(BIG_TREE.lines);
+  it('shades a bauble with a cap and a highlight', () => {
+    const art = bauble(3, 2, FAM.red, ramp, 6);
+    expect(text(art)[6]).toContain('[=]');
+    expect(Array.from(art.colour)).toContain(code(FAM.white, 1));
   });
 
-  it('keeps the other art pieces rectangular with matching masks', () => {
-    for (const art of [SNOWMAN, SLEIGH, FOOTER_SCENE]) {
-      const width = art.lines[0].length;
-      expect(art.lines.every((l) => l.length === width)).toBe(true);
-      expect(art.mask.every((m) => m.length <= width)).toBe(true);
-    }
+  it('paints hand-drawn art by key, with twinkling lights', () => {
+    const art = paintArt(['/\\', '@!'], (ch) => (ch === '@' ? '*' : 'g'));
+    expect(art.lights).toHaveLength(1);
+    expect(art.colour[0] >> 4).toBe(FAM.green);
+  });
+
+  it('maps brightness to characters and shifts colours within a family', () => {
+    expect(rampChar(ramp, 0)).toBe(ramp[0]);
+    expect(rampChar(ramp, 1)).toBe(ramp[ramp.length - 1]);
+    expect(shift(code(FAM.red, 0.5), 20) & 15).toBe(15);
+    expect(shift(code(FAM.red, 0.5), -20) & 15).toBe(0);
+    expect(shift(code(FAM.red, 0.5), 2) >> 4).toBe(FAM.red);
+  });
+
+  it('keeps the little header logo rectangular', () => {
+    expect(LOGO_TREE.lines.every((l) => l.length === LOGO_TREE.width)).toBe(true);
   });
 });
 
