@@ -6,7 +6,6 @@ import { DETAIL_FIELDS, LIMITS, validateDetails } from '../../shared/validation'
 import { ApiError, BOOKING_FORM_PREVIEW_URL, BOOKING_FORM_URL, api, downloadFile } from '../lib/api';
 import { bigCelebration } from '../lib/celebrate';
 import { AsciiArt, art } from './ascii/AsciiArt';
-import { DesignPicker } from './ascii/DesignSwitcher';
 import { Glyph } from './ascii/Glyph';
 import { Spinner } from './icons';
 import { SectionHeading } from './SectionHeading';
@@ -263,15 +262,6 @@ export function Workshop({ config, orders, details, onDetailsSaved }: WorkshopPr
           <p className="mb-4 mt-2 text-xs text-white/65">The top section of the restaurant’s form. Fill in once - anyone can update it.</p>
           <DetailsForm details={details} onSaved={onDetailsSaved} />
         </div>
-      </div>
-
-      <div className="glass card-pad mt-6 lg:mt-8">
-        <h3 className="flex items-center gap-2 font-display text-3xl leading-none">
-          <Glyph name="tree" className="text-base text-holly-500" />
-          Pick a backdrop
-        </h3>
-        <p className="mb-4 mt-2 text-xs text-white/65">Three animated ASCII trees - try each one. Your choice is remembered on this device.</p>
-        <DesignPicker />
       </div>
     </section>
   );

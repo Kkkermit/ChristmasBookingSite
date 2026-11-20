@@ -5,7 +5,7 @@ Smokehouse & Cellar Christmas meal. Once everyone has ordered, anyone can downlo
 **booking form PDF, already filled in** — names, ticks and allergies — ready to send.
 
 It looks like a terminal: pure black, candy-cane red and frost white, with every picture and icon drawn in
-**ASCII** and an animated ASCII Christmas tree in the backdrop (three designs to pick from).
+**ASCII** and a big, detailed, animated ASCII Christmas tree in the backdrop.
 
 Built with **Vite + React + TypeScript + Tailwind CSS v4**, animated with **Motion**, with a single
 **Vercel Function** API backed by **Supabase Postgres**, and Vercel Routing Middleware that hides the
@@ -30,18 +30,15 @@ whole site from anyone without the password.
 - 🧾 **Auto-filled booking form** — the restaurant's PDF filled in alphabetically, with the header details
   (lead booker, phone, date, time…) and total guests. It stays editable for last-minute tweaks.
 - 📖 **Menu download** for everyone who's logged in.
-- 🎄 **Animated ASCII tree backdrop, three designs** — pick one in *Santa's Workshop* (or the `tree 1 2 3`
-  switch on the login page, or add `?tree=1`, `2` or `3` to any URL). The choice is remembered per device.
-  Every tree is drawn by a small procedural renderer (`src/components/ascii/engine/`) that shades each
+- 🎄 **Animated ASCII tree backdrop** — a big, detailed Christmas tree behind every page. Its fairy lights
+  twinkle and switch on, top to bottom, as you scroll; the star flares at the bottom of the page; the tree
+  drifts gently (parallax) under falling ASCII snow, and stands beside the login card on wide screens.
+  It's drawn by a small procedural renderer (`src/components/ascii/engine/`) that shades each
   character cell — layered drooping branches with needle texture and lighting, snow on the tips, tinsel and
   bead garlands, glossy baubles with highlights, a faceted star, wrapped presents and snowy ground — at a
   font size picked for the screen, so it stays detailed from phones to 4K. Glyphs are copied from a
   pre-rendered atlas at whole device pixels (pin-sharp), and slow devices automatically step down
   resolution, then frame rate.
-  1. **Classic** — a big detailed tree whose fairy lights switch on, top to bottom, as you scroll, with ASCII snow.
-  2. **3D Spiral** — a 3D tree ray-cast into characters every frame, wrapped in a red-and-white candy-cane
-     ribbon, with baubles and lights that turn with it and a spinning star; scrolling spins it and winds more ribbon on.
-  3. **Code Rain** — red and white character rain that lights the tree up as it falls; scroll faster and it pours.
 - 🔤 **Everything in ASCII** — FIGlet title banners that decode themselves, `( )`/`(*)` radio buttons, dish
   pictures, a `[====>....]` progress bar, `[####...]` kitchen-tally bars, ticket-style order cards, an ASCII
   sleigh fly-by, shaded ASCII baubles in the margins, string lights in the header, a snowy ASCII village

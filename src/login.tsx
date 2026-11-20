@@ -5,7 +5,6 @@ import { MotionConfig } from 'motion/react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Backdrop } from './components/ascii/Backdrop';
-import { DesignSwitcher } from './components/ascii/DesignSwitcher';
 import { FooterScene } from './components/ascii/FooterScene';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginScreen } from './components/LoginScreen';
@@ -25,7 +24,6 @@ function LoginPage() {
             <LoginScreen beside onSuccess={() => setTimeout(() => window.location.replace('/'), 450)} />
           </ErrorBoundary>
           <FooterScene />
-          <DesignSwitcher className="fixed right-3 top-3 z-20" />
         </div>
       </ToastProvider>
     </MotionConfig>

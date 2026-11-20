@@ -1,19 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
-import { resetDesignForTests } from '../../lib/design';
+import { describe, expect, it } from 'vitest';
 import { AsciiArt } from './AsciiArt';
-import { DesignPicker, DesignSwitcher } from './DesignSwitcher';
 import { getRamp, rampChar } from './engine/atlas';
 import { bauble, cottage, lamp, paintArt, presents, sleigh, snowman, village } from './engine/art';
 import { EMPTY, FAM, code, shift } from './engine/palette';
 import { renderTree, treeGeometry } from './engine/treeModel';
 import { LOGO_TREE } from './tree';
-
-afterEach(() => {
-  resetDesignForTests();
-  window.localStorage.clear();
-});
 
 const ramp = getRamp();
 const text = (art: { cols: number; rows: number; glyph: string[] }) =>
@@ -96,22 +88,5 @@ describe('AsciiArt', () => {
     expect(container.querySelector('pre')).toHaveAttribute('aria-hidden', 'true');
     rerender(<AsciiArt lines={['/\\']} label="A tree" />);
     expect(screen.getByRole('img', { name: 'A tree' })).toBeInTheDocument();
-  });
-});
-
-describe('backdrop picker', () => {
-  it('switches design and shows which one is on', async () => {
-    render(<DesignPicker />);
-    expect(screen.getByRole('radio', { name: /Classic/ })).toHaveAttribute('aria-checked', 'true');
-    await userEvent.click(screen.getByRole('radio', { name: /Code Rain/ }));
-    expect(screen.getByRole('radio', { name: /Code Rain/ })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('radio', { name: /Classic/ })).toHaveAttribute('aria-checked', 'false');
-    expect(window.localStorage.getItem('xmas-backdrop')).toBe('rain');
-  });
-
-  it('has a compact 1 / 2 / 3 switch for the login page', async () => {
-    render(<DesignSwitcher />);
-    await userEvent.click(screen.getByRole('radio', { name: 'Backdrop 2: 3D Spiral' }));
-    expect(screen.getByRole('radio', { name: 'Backdrop 2: 3D Spiral' })).toHaveAttribute('aria-checked', 'true');
   });
 });
